@@ -1,5 +1,5 @@
 Package: gamstackr
-Title: Tools for stacking probabilistic densities.
+Title: Tools for stacking probabilistic densities
 Version: 0.0.1
 Authors@R: 
     person("Euan", "Enticott", , "euan.enticott@bristol.ac.uk", role = c("aut", "cre"))

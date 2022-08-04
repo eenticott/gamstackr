@@ -14,5 +14,7 @@ Config/testthat/edition: 3
 URL: https://github.com/eenticott/gamstackr
 BugReports: https://github.com/eenticott/gamstackr/issues
 Imports: 
+    Matrix,
     matrixStats,
+    mgcv,
     stats

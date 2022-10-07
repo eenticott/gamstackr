@@ -39,7 +39,7 @@ ordinal <- function(num_weights) { # nolint
     return(sapply(1:(length(theta) + 1), function(x) {f_j(eta, theta, x)}))
   }
 
-  F_diff1 <- function(x) {
+  F_diff <- function(x) {
     abs_x <- abs(x)
     exp_x <- exp(-abs_x)
     exp_2x <- exp_x^2

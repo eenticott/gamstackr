@@ -84,3 +84,7 @@ get_diag <- function(list_of_lists) {
   }
   return(out_list)
 }
+
+matrix_to_lov <- function(X) {
+  lapply(seq_len(ncol(X)), function(i) X[,i])
+}

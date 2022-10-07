@@ -194,7 +194,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   assign(".inner", inner_funcs, envir = environment())
   getInner <- function() get(".inner")
 
-  # Rigepen
+  # Ridgepen
   assign(".RidgePen", RidgePen, envir = environment())
   getRidgePen <- function() get(".RidgePen")
 
@@ -516,13 +516,14 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     # get eta parameters
     list_of_beta <- list()
     list_of_X_eta <- list()
+
     for (ii in 1:(K-1)) {
       list_of_beta[[ii]] <- beta[lpi[[ii]]]
-      list_of_X_eta[[ii]] <- X[lpi[[ii]]]
+      list_of_X_eta[[ii]] <- X[, lpi[[ii]]]
     }
-
     list_of_eta <- get_list_of_eta(list_of_X_eta, list_of_beta)
-
+    list_of_betaT <- list()
+    list_of_X_etaT <- list()
     ####
     neta <- family$n_each_eta
     # get etaT parameters
@@ -579,11 +580,15 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       inner_weights[[i]] <- inner_weights[[i]]$f_eval
     }
 
-    final_weights <- list_times_list(outer_weights, inner_weights)
+    # Do we return outer weights then inner weights, or multiplied weights?
+    all_inner_weights <- do.call("cbind", inner_weights)
 
-    final_weights <- do.call("cbind", final_weights)
+    outer_then_inner <- cbind(outer_weights, all_inner_weights)
 
-    return(list(weights = final_weights))
+    multiplied_weights <- list_times_list(matrix_to_lov(outer_weights), inner_weights)
+    multiplied_weights <- do.call("cbind", multiplied_weights)
+    print(outer_then_inner)
+    return(list(fit = outer_then_inner))
   }
 
   structure(list(family = "NestedStack",ll = ll,nlp = K - 1 + neta,

@@ -198,6 +198,10 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   assign(".RidgePen", RidgePen, envir = environment())
   getRidgePen <- function() get(".RidgePen")
 
+  # n_params
+  assign(".nparams", ntheta + neta + K - 1, envir = environment())
+  getNparams <- function() get(".nparams")
+
   # copied residuals from fam_stackProb
   residuals <- function(object, type=c("deviance","pearson","response")) {
     return(as.matrix(object$y)[, 1])
@@ -283,7 +287,6 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
             y <- init_pars[[ii]]$init_mu
             x1 <- x[, lpi[[ij]], drop = FALSE]
             e1 <- E[, lpi[[ij]], drop = FALSE]
-            print(e1)
             coefs[lpi[[ij]]] <- start_coef(x1, e1, y)
             list_of_X_etaT[[ii]] <- x1
             list_of_betaT[[ii]] <- coefs[lpi[[ij]]]
@@ -337,7 +340,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
         y1 <- id_mat[,k+1]
         x1 <- x[,lpi[[k]], drop = FALSE]
         e1 <- E[,lpi[[k]], drop = FALSE]
-        coefs[k] <- start_coef(x1, e1, y1)
+        coefs[lpi[[k]]] <- start_coef(x1, e1, y1)
       }
 
       return(coefs)
@@ -429,8 +432,8 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     derivs$llbb <- as.numeric(derivs$llbb) # not sure why it isn't already numeric
     # happened after adding NULLs in for ID inner function
 
-    # if (any(is.nan(derivs$llbb))) {
-    #   print(derivs$llbb)
+    if (any(is.nan(derivs$llbb))) {
+       print(derivs$llbb)}
     #   browser()
     #   print(list_of_betaT)
     #   print(list_of_theta)
@@ -561,18 +564,17 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       }
     }
 
-
+# In development version of fam_stack
+#    jacobian(eta, jj)
+#        jj is index of jacobian
 
     inner_weights <- list()
     for (k in 1:length(list_of_inner_functions)) {
-      inner_weights[[k]] <- eval_deriv(list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]],deriv = 0)
+      inner_weights[[k]] <- eval_deriv(list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]], deriv = 0)
     }
-
-    print(list_of_eta)
 
     outer_weights <- eta_to_alpha(list_of_eta)
 
-    print(outer_weights)
     for (i in 1:length(inner_weights)) {
       inner_weights[[i]] <- inner_weights[[i]]$f_eval
     }
@@ -580,7 +582,6 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     final_weights <- list_times_list(outer_weights, inner_weights)
 
     final_weights <- do.call("cbind", final_weights)
-
 
     return(list(weights = final_weights))
   }
@@ -593,6 +594,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
                  putLogP = putLogP,
                  putP = putP,
                  getInner = getInner,
+                 getNparams = getNparams,
                  n.theta = n.theta,
                  n_each_theta = n_each_theta,
                  n_each_eta = n_each_eta,

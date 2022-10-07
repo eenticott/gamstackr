@@ -13,6 +13,9 @@ h <- function(dens, f_deriv, ll_alpha) {
   return(out)
 }
 
+XtDX <- function(X1, D, X2) {
+  as.matrix(crossprod(X1, D*X2))
+}
 
 # Likelihood -------------------------------------------------------------------
 ll <- function(list_of_f_eval, alpha_matrix, list_of_densities) {
@@ -144,7 +147,7 @@ ll_eta2 <- function(alpha, list_of_eta, list_of_densities, list_of_f_eval, list_
       if (i == 1 | j == 1) {
         out[[i]][[j]] <- NULL
       } else {
-        out[[i]][[j]] <- t(list_of_X_eta[[i-1]]) %*% diag(out_mat[i-1,(((j-1)*N)+1):(N*j)]) %*% list_of_X_eta[[j-1]]
+        out[[i]][[j]] <- XtDX(list_of_X_eta[[i-1]], out_mat[i-1,(((j-1)*N)+1):(N*j)], list_of_X_eta[[j-1]])
       }
     }
     out[[i]] <- do.call("cbind", out[[i]])
@@ -188,9 +191,10 @@ ll_betaT2 <- function(ll_alpha, f_eta2T_eval, list_of_ll_etaT, k1, k2, list_of_d
         part1 = 0
       }
       part2 = list_of_ll_etaT[[k1]][[alpha]] * list_of_ll_etaT[[k2]][[beta]]
-      eta_out[[alpha]][[beta]] <- diag(part1 - part2)
 
-      out[[alpha]][[beta]] <- (t(list_of_X_etaT[[k1]][[alpha]]) %*% eta_out[[alpha]][[beta]]) %*% list_of_X_etaT[[k2]][[beta]]
+      output <- XtDX(list_of_X_etaT[[k1]][[alpha]], part1 - part2, list_of_X_etaT[[k2]][[beta]])
+      #other_output <- t(list_of_X_etaT[[k1]][[alpha]]) %*% diag(part1 - part2) %*% list_of_X_etaT[[k2]][[beta]]
+      out[[alpha]][[beta]] <- output
     }
     out[[alpha]] <- do.call("cbind", out[[alpha]])
   }
@@ -333,25 +337,17 @@ ll_eta_etaT <- function(list_of_etaT_derivs, list_of_f_eval, list_of_densities, 
         }
         out_inner <- list()
         for (j in 1:length(part2)) {
-          Xk1k2_m <- diag(Xk1k2[[j]])
-
-          out_inner[[j]] <- t(list_of_X_eta[[(k1)]]) %*% Xk1k2_m %*% list_of_X_etaT[[k2]][[j]]
-
+          out_inner[[j]] <- XtDX(list_of_X_eta[[(k1)]], Xk1k2[[j]],list_of_X_etaT[[k2]][[j]])
         }
         out[[k1]][[k2]] <- do.call("cbind", out_inner)
 
       } else {
         part2 = h(list_of_densities[[k1]], list_of_f_eval[[k1]], ll_alpha[,k1]) * list_of_etaT_derivs[[k2]]
 
-        Xk1k2 = diag(part1 - part2)
-
-        # removed weird if k1==1 statement?
-        out[[k1]][[k2]] <- t(list_of_X_eta[[k1]]) %*% Xk1k2 %*% list_of_X_etaT[[k2]]
+        out[[k1]][[k2]] <- XtDX(list_of_X_eta[[k1]], part1 - part2, list_of_X_etaT[[k2]])
       }
     }
-    #out[[k1]] <- do.call("cbind", out[[k1]])
   }
-  #out <- do.call("rbind", out)
   return(out)
 }
 

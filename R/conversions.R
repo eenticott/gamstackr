@@ -2,8 +2,14 @@ eta_to_alpha <- function(list_of_eta) {
   if (length(list_of_eta) == 0) {
     return(1)
   }
-  exp_eta_matrix <- cbind(1, exp(matrix(unlist(list_of_eta), ncol = length(list_of_eta))))
-  return(exp_eta_matrix / rowSums(exp_eta_matrix))
+  # exp_eta_matrix <- cbind(1, exp(matrix(unlist(list_of_eta), ncol = length(list_of_eta))))
+  # out <- exp_eta_matrix / rowSums(exp_eta_matrix)
+  eta <- matrix(unlist(list_of_eta), ncol = length(list_of_eta)) #turn eta into matrix
+  nu1 <- cbind(0, eta) # add 0 column for fixed first eta
+  etaCen <- eta1 - apply(eta1, 1, max) # Centre the matrix
+  exp_etaCen <- exp(etaCen)
+  out <- exp_nuCen / rowSums(exp_nuCen)
+  return(out)
 }
 
 eta_to_beta <- function(list_of_ll_eta, list_of_X_eta) {

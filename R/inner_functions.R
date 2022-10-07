@@ -39,14 +39,12 @@ ordinal <- function(num_weights) { # nolint
     return(sapply(1:(length(theta) + 1), function(x) {f_j(eta, theta, x)}))
   }
 
-  F_diff <- function(x) { # nolint
-    cp <- x > 0
-    cn <- x < 0
-    xp <- x[cp]
-    xn <- x[cn]
-    out <- x
-    out[cp] <- exp(-xp) / (1 + exp(-xp))^2
-    out[cn] <- exp(xn) / (1 + exp(xn))^2
+  F_diff1 <- function(x) {
+    abs_x <- abs(x)
+    exp_x <- exp(-abs_x)
+    exp_2x <- exp_x^2
+    exp_x_p1_2 <- (1 + exp_x)^2
+    out <- exp_x / exp_x_p1_2
     return(out)
   }
 
@@ -80,20 +78,17 @@ ordinal <- function(num_weights) { # nolint
     return(out)
   }
 
-  F_diff2 <- function(x) { # nolint
-    cp <- x > 0
-    cn <- x < 0
-    xp <- x[cp]
-    xn <- x[cn]
-    out <- x
-    out[cp] <- (exp(-2 * xp) - exp(-xp)) / (1 + exp(-xp))**3
-    out[cn] <- (exp(xn) - exp(2 * xn)) / (1 + exp(xn))**3
-    return(out)
-    # exp(-2*x)*(-exp(x)+1)/(1+exp(-x))**3 # nolint
+  F_diff2 <- function(x) {
+    abs_x <- abs(x)
+    exp_x <- exp(-abs_x)
+    exp_2x <- exp_x^2
+    exp_3x <- exp_x * exp_2x
+    exp_x_p1_3 <- (1 + exp_3x + 3 * exp_2x + 3 * exp_x)
+    out <- sign(x) * (exp_2x - exp_x) / exp_x_p1_3
   }
 
   # for f_theta2 f_thetaj_theta_notj will always be 0
-  # still store this as representitive structure
+  # still store this as representative structure
   f_theta2_ij <- function(eta, theta, i, j) {
     store <- matrix(0, length(eta), length(theta) + 1)
     if (i != j) {

@@ -21,6 +21,9 @@ get_list_of_eta <- function(list_of_X_eta, list_of_beta) {
   if (length(list_of_X_eta) == 0) {
     return(eta_list)
   }
+  
+
+  
   for (k in 1:length(list_of_X_eta)) {
     if (is.list(list_of_X_eta[[k]])) {
       eta_list[[k]] <- list()

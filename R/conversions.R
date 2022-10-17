@@ -1,6 +1,6 @@
 eta_to_alpha <- function(list_of_eta) {
   if (length(list_of_eta) == 0) {
-    return(1)
+    return(matrix(1))
   }
   # exp_eta_matrix <- cbind(1, exp(matrix(unlist(list_of_eta), ncol = length(list_of_eta))))
   # out <- exp_eta_matrix / rowSums(exp_eta_matrix)

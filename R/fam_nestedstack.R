@@ -18,7 +18,7 @@ get_derivatives <- function(list_of_beta,
   } else {
     alpha_matrix <- eta_to_alpha(list_of_eta)
   }
-
+  
   if (derivs == 1) {
     derivs = 2
   } else if (derivs == 0) {
@@ -30,6 +30,9 @@ get_derivatives <- function(list_of_beta,
   eval_store <- list()
   for (k in 1:length(list_of_inner_functions)) {
     eval_store[[k]] <- eval_deriv(list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]],deriv = derivs)
+    if (attr(list_of_inner_functions[[k]], "name") == "id") {
+      eval_store[[k]]$f_eval <- matrix(1, nrow = nrow(alpha_matrix))
+    }
   }
 
   ll_eval <- ll(get_eval("f_eval", eval_store), alpha_matrix, list_of_densities)
@@ -99,23 +102,31 @@ get_derivatives <- function(list_of_beta,
       theta2_derivs[[k1]] <- do.call("cbind", theta2_derivs[[k1]])
       betaT_theta_derivs[[k1]] <- do.call("cbind", betaT_theta_derivs[[k1]])
     }
-
-    for (k1 in 1:(K-1)) {
+    
+    for (k1 in (1:(K-1))[(1:(K-1))>0]) {
       if (K == 1) {
         beta_theta_derivs[[k1]] <- NULL
         beta_betaT_derivs[[k1]] <- NULL
       } else {
-        beta_theta_derivs[[k1]] <- -do.call("cbind", ll_eta_theta_eval[[k1]])
-        beta_betaT_derivs[[k1]] <- -do.call("cbind", ll_eta_etaT_eval[[k1]])
+        a <- do.call("cbind", ll_eta_theta_eval[[k1]])
+        if (!is.null(a)){a <- -a}
+        b <- do.call("cbind", ll_eta_etaT_eval[[k1]])
+        if (!is.null(b)){b <- -b}
+        beta_theta_derivs[[k1]] <- a
+        beta_betaT_derivs[[k1]] <- b
       }
     }
-
 
     betaT2_derivs <- do.call("rbind", betaT2_derivs)
     theta2_derivs <- do.call("rbind", theta2_derivs)
     betaT_theta_derivs <- do.call("rbind", betaT_theta_derivs)
     beta_theta_derivs <- do.call("rbind", beta_theta_derivs)
     beta_betaT_derivs <- do.call("rbind", beta_betaT_derivs)
+    
+    if (K==1) {
+      beta_betaT_derivs <- NULL
+      beta_theta_derivs <- NULL
+    }
 
     t_alt <- function(mat) {
       if (is.null(mat)) {
@@ -124,7 +135,6 @@ get_derivatives <- function(list_of_beta,
         return(t(mat))
       }
     }
-
     hessian <- rbind(
       cbind(eta2, beta_betaT_derivs, beta_theta_derivs),
       cbind(t_alt(beta_betaT_derivs), betaT2_derivs, betaT_theta_derivs),
@@ -179,6 +189,8 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     stats[[ii]]$d3link <- fam$d3link
     stats[[ii]]$d4link <- fam$d4link
   }
+  fam_env <- new.env()
+  
   ## Save parameters to global env
   # logP
   assign(".logP", logP, envir = environment())
@@ -190,6 +202,11 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   getP <- function() get(".P")
   putP <- function(.x) assign(".P", .x, envir = environment(sys.function))
 
+  # lpi
+  assign(".lpi", "unassigned", envir = fam_env)
+  getlpi <- function() get(".lpi", envir = fam_env)
+  putlpi <- function(.x) assign(".lpi", .x, envir = fam_env)
+  
   # inner
   assign(".inner", inner_funcs, envir = environment())
   getInner <- function() get(".inner")
@@ -327,6 +344,9 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       for (k in 1:length(inners)) {
         f_eval <- eval_deriv(inners[[k]], list_of_etaT[[k]], list_of_theta[[k]],deriv = 0)$f_eval
         p <- list_of_densities[[k]]
+        if(nrow(p) != nrow(f_eval)) {
+          f_eval = matrix(1, nrow = nrow(p))
+        }
         init_dens[,k] <- rowSums(f_eval * p)
       }
 
@@ -335,13 +355,16 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       id_mat <- matrix(0, nrow = N, ncol = K)
 
       id_mat[matrix(c(1:N, y), ncol = 2)] <- 1
-
-      for (k in 1:(K-1)) {
-        y1 <- id_mat[,k+1]
-        x1 <- x[,lpi[[k]], drop = FALSE]
-        e1 <- E[,lpi[[k]], drop = FALSE]
-        coefs[lpi[[k]]] <- start_coef(x1, e1, y1)
+      
+      if (K > 1) {
+        for (k in 1:(K-1)) {
+          y1 <- id_mat[,k+1]
+          x1 <- x[,lpi[[k]], drop = FALSE]
+          e1 <- E[,lpi[[k]], drop = FALSE]
+          coefs[lpi[[k]]] <- start_coef(x1, e1, y1)
+        }
       }
+
 
       return(coefs)
     }
@@ -361,6 +384,10 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     ##       K+c(0,cumsum(neta))[i] : K+c(0,cumsum(neta))[i+1] coefs for inner model i
     #print(str(x))
     lpi <- attr(x,"lpi")
+    lpiflag <- family$getlpi()
+    if (lpiflag == "unassigned") {
+      family$putlpi(lpi)
+    }
     if (is.null(lpi)) {
       stop("Missing design matrix.")
     }
@@ -434,7 +461,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
 
     if (any(is.nan(derivs$llbb))) {
        print(derivs$llbb)}
-    #   browser()
+      # browser()
     #   print(list_of_betaT)
     #   print(list_of_theta)
     # }
@@ -473,14 +500,15 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       }
 
     } else {
-      beta_pen <- NULL
+      beta_pen <- 0
+      beta_pen_d1 <- NULL
+      beta_pen_d2 <- NULL
     }
 
     betaT_pen <- sum(unlist(list_of_betaT)^2)
     theta_pen <- sum(unlist(sapply(t_pen, "[[", "p")))
 
     l <- derivs$ll
-
     l_pen <- RidgePen * (beta_pen + betaT_pen + theta_pen)
     l <- l - l_pen
 
@@ -511,16 +539,21 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
 
     list_of_inner_functions <- family$getInner()
 
-    lpi <- attr(X, "lpi")
+    lpi <- family$getlpi()
+    
     K <- length(list_of_inner_functions)
+    N <- nrow(X)
     # get eta parameters
     list_of_beta <- list()
     list_of_X_eta <- list()
-
-    for (ii in 1:(K-1)) {
-      list_of_beta[[ii]] <- beta[lpi[[ii]]]
-      list_of_X_eta[[ii]] <- X[, lpi[[ii]]]
+    
+    if (K > 1) {
+      for (ii in (1:(K-1))) {
+        list_of_beta[[ii]] <- beta[lpi[[ii]]]
+        list_of_X_eta[[ii]] <- X[, lpi[[ii]]]
+      }
     }
+    
     list_of_eta <- get_list_of_eta(list_of_X_eta, list_of_beta)
     list_of_betaT <- list()
     list_of_X_etaT <- list()
@@ -548,9 +581,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     }
 
     list_of_etaT <- get_list_of_eta(list_of_X_etaT, list_of_betaT)
-
     #####
-
     # get theta parameters
     p <- lapply(lpi, function(lpi_ii) length(lpi_ii))
     ntheta = family$n_each_theta
@@ -561,6 +592,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       if (ntheta[[ii]] == 0) {
         list_of_theta[ii] <- list(NULL)
       } else {
+
         list_of_theta[[ii]] <- beta[(ij + ti[ii] + 1):(ij + ti[ii + 1])]
       }
     }
@@ -573,21 +605,28 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     for (k in 1:length(list_of_inner_functions)) {
       inner_weights[[k]] <- eval_deriv(list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]], deriv = 0)
     }
-
+    
     outer_weights <- eta_to_alpha(list_of_eta)
-
+    if (K == 1) {
+      outer_weights <- matrix(1, nrow = N)
+    }
+    
     for (i in 1:length(inner_weights)) {
       inner_weights[[i]] <- inner_weights[[i]]$f_eval
+      if (nrow(inner_weights[[i]]) != N) {
+        inner_weights[[i]] <- matrix(1, nrow = N)
+      }
     }
 
     # Do we return outer weights then inner weights, or multiplied weights?
     all_inner_weights <- do.call("cbind", inner_weights)
 
     outer_then_inner <- cbind(outer_weights, all_inner_weights)
+    if (!is.null(outer_weights)) {
+      multiplied_weights <- list_times_list(matrix_to_lov(outer_weights), inner_weights)
+      multiplied_weights <- do.call("cbind", multiplied_weights)
+    }
 
-    multiplied_weights <- list_times_list(matrix_to_lov(outer_weights), inner_weights)
-    multiplied_weights <- do.call("cbind", multiplied_weights)
-    print(outer_then_inner)
     return(list(fit = outer_then_inner))
   }
 
@@ -598,6 +637,8 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
                  getRidgePen = getRidgePen,
                  putLogP = putLogP,
                  putP = putP,
+                 getlpi = getlpi,
+                 putlpi = putlpi,
                  getInner = getInner,
                  getNparams = getNparams,
                  n.theta = n.theta,

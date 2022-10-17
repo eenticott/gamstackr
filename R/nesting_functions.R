@@ -1,6 +1,6 @@
 # Implements derivatives given the inner function derivatives.
 
-
+# h is a commonly seen function in the derivatives
 h <- function(dens, f_deriv, ll_alpha) {
   if (is.list(f_deriv)) {
     out <- list()
@@ -13,6 +13,7 @@ h <- function(dens, f_deriv, ll_alpha) {
   return(out)
 }
 
+# takes cross product around diagonal matrix D (but D inputted as vector)
 XtDX <- function(X1, D, X2) {
   as.matrix(crossprod(X1, D*X2))
 }
@@ -141,14 +142,10 @@ ll_eta2 <- function(alpha, list_of_eta, list_of_densities, list_of_f_eval, list_
 
   # Convert to beta derivatives
   out <- list()
-  for (i in 1:K) {
+  for (i in 2:K) {
     out[[i]] <- list()
-    for (j in 1:K) {
-      if (i == 1 | j == 1) {
-        out[[i]][[j]] <- NULL
-      } else {
+    for (j in 2:K) {
         out[[i]][[j]] <- XtDX(list_of_X_eta[[i-1]], out_mat[i-1,(((j-1)*N)+1):(N*j)], list_of_X_eta[[j-1]])
-      }
     }
     out[[i]] <- do.call("cbind", out[[i]])
   }
@@ -179,10 +176,9 @@ ll_betaT2 <- function(ll_alpha, f_eta2T_eval, list_of_ll_etaT, k1, k2, list_of_d
     list_of_ll_etaT[[k2]] <- list(list_of_ll_etaT[[k2]])
     1
   }
-  eta_out <- list()
+
   out <- list()
   for (alpha in 1:no_alpha) {
-    eta_out[[alpha]] <- list()
     out[[alpha]] <- list()
     for (beta in 1:no_beta) {
       if (k1 == k2) {
@@ -193,7 +189,7 @@ ll_betaT2 <- function(ll_alpha, f_eta2T_eval, list_of_ll_etaT, k1, k2, list_of_d
       part2 = list_of_ll_etaT[[k1]][[alpha]] * list_of_ll_etaT[[k2]][[beta]]
 
       output <- XtDX(list_of_X_etaT[[k1]][[alpha]], part1 - part2, list_of_X_etaT[[k2]][[beta]])
-      #other_output <- t(list_of_X_etaT[[k1]][[alpha]]) %*% diag(part1 - part2) %*% list_of_X_etaT[[k2]][[beta]]
+      
       out[[alpha]][[beta]] <- output
     }
     out[[alpha]] <- do.call("cbind", out[[alpha]])
@@ -202,25 +198,6 @@ ll_betaT2 <- function(ll_alpha, f_eta2T_eval, list_of_ll_etaT, k1, k2, list_of_d
   out
 }
 
-
-# ll_etaT2 <- function(ll_alpha, f_eta2_eval, list_of_ll_etaT, k1, k2, p) {
-#   if (k1 == k2) {
-#     part1 = h(p, f_eta2_eval, ll_alpha)
-#   } else {
-#     part1 = 0
-#   }
-#
-#   N = nrow(f_eta2_eval)
-#   no_k2 = list_of_ll_etaT[[k2]]
-#   no_k1 = list_of_ll_etaT[[k1]]
-#
-#   out = list()
-#   for (i in 1:no_k2) {
-#     out[[i]] = matrix(part1 - rep((unlist(list_of_ll_etaT[[k2]])[(((i-1)*N)+1):(i*N)]), no_k1) * (unlist(list_of_ll_etaT[[k1]])))
-#   }
-#
-#   return(do.call("rbind", out))
-# }
 
 ## Second derivatives for theta
 ll_theta2_nq <- function(ll_alpha, f_theta2_eval, list_of_densities, f_theta_eval1, f_theta_eval2, k1, k2, n, q) {
@@ -355,13 +332,12 @@ ll_eta_theta <- function(list_of_f_theta_eval, list_of_f_eval, list_of_densities
   # TODO: Make more efficient by removing eta1 calc
   K <- length(list_of_densities)
   N <- nrow(list_of_densities[[1]])
-
   out <- list()
 
   for (k1 in 1:(K-1)) {
     out[[k1]] <- list()
     if (is.null(list_of_f_theta_eval[[k1]])) {
-      out[k1] <- list(NULL)
+      out[[k1]] <- list(NULL)
       next
     }
     for (k2 in 1:K) {

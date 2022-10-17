@@ -209,7 +209,9 @@ ordinal <- function(num_weights) { # nolint
     return(list(p = pen, pt = pen_grad, ptt = pen_hess))
   }
 
-  return(structure(get_derivs, init_func = init_func, theta_pen = pen, neta = 1, ntheta = num_weights - 2))
+  name = "ordinal"
+  
+  return(structure(get_derivs, init_func = init_func, theta_pen = pen, neta = 1, ntheta = num_weights - 2, name = "ordinal"))
 }
 
 # Multivariate normal inner functions ------------------------------------------
@@ -387,18 +389,20 @@ MVN_weights <- function(x, dim_num) {
 
       pen_hess <- diag((4 * theta - 2 * v) * theta)
     }
+  
 
     return(list(p = pen, pt = pen_grad, ptt = pen_hess))
   }
 
-
+  name = "MVN"
   return(structure(
     get_derivs,
     init_func = init_func,
     arg_list = list("x" = x, dim_num = dim_num),
     neta = dim_num,
     ntheta = dim_num,
-    theta_pen = pen
+    theta_pen = pen,
+    name = name
   ))
 }
 
@@ -413,7 +417,7 @@ MVN_weights <- function(x, dim_num) {
 #'
 #' @examples
 #' id(3, 1000)
-id <- function(num_weights, N) {
+id <- function() {
   # Suppose we have N data points
   # n_k inner functions
   # inner functions f_j depend on:
@@ -423,7 +427,7 @@ id <- function(num_weights, N) {
   get_derivs <- function(eta, theta, deriv) {
     store <- list()
     if (deriv >= 0) {
-      store$f_eval <- matrix(1/num_weights, nrow = N, ncol = num_weights)
+      store$f_eval <- matrix(1, nrow = 1, ncol = 1)
       if (deriv >= 1) {
         zero_mat <- NULL
 
@@ -454,7 +458,9 @@ id <- function(num_weights, N) {
   init_func <- function(densities) {
     return(list(init_theta = NULL, init_mu = NULL))
   }
+  
+  name <- "id"
 
-  return(structure(get_derivs, neta = 0, ntheta = 0, theta_pen = pen, init_func = init_func))
+  return(structure(get_derivs, neta = 0, ntheta = 0, theta_pen = pen, init_func = init_func, name = name))
 }
 

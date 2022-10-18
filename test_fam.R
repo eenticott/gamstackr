@@ -11,8 +11,6 @@ dTrain <- dTrain %>% mutate_if(is.numeric,~scale(.) %>% as.vector)
 dStack <- dStack %>% mutate_if(is.numeric,~scale(.) %>% as.vector)
 dTest <- dTest %>% mutate_if(is.numeric,~scale(.) %>% as.vector)
 
-
-
 # Fit experts ------------------------------------------------------------------------
 fit1 <- bam(load ~ s(load24, k = 8, bs = "cr") + dow, discrete = T, data = dTrain)
 
@@ -33,7 +31,7 @@ fit3 <- bam(load ~ s(load24, k = 8, bs = "cr") +
 
 summary(fit3)
 
-dStack <- dStack[1:2000,]
+#dStack <- dStack[1:4000,]
 
 p1 <- predict(fit1, newdata = dStack)
 p2 <- predict(fit2, newdata = dStack)
@@ -72,7 +70,7 @@ v3 = sqrt(var((predict(fit3, newdata = dStack) - dStack$load)^2))
 x <- matrix(c(m1, m2, m3, v1, v2, v3), nrow = 2, byrow = T)
 inner_MVN <- MVN_weights(x, 2)
 inner_ordinal <- ordinal(3)
-inner_id <- id(1, nrow(dens))
+inner_id <- id()
 inners <- list(inner_ordinal, inner_MVN)
 
 list_of_densities <- list(dens, dens)

@@ -18,7 +18,7 @@ get_derivatives <- function(list_of_beta,
   } else {
     alpha_matrix <- eta_to_alpha(list_of_eta)
   }
-  
+
   if (derivs == 1) {
     derivs = 2
   } else if (derivs == 0) {
@@ -102,7 +102,7 @@ get_derivatives <- function(list_of_beta,
       theta2_derivs[[k1]] <- do.call("cbind", theta2_derivs[[k1]])
       betaT_theta_derivs[[k1]] <- do.call("cbind", betaT_theta_derivs[[k1]])
     }
-    
+
     for (k1 in (1:(K-1))[(1:(K-1))>0]) {
       if (K == 1) {
         beta_theta_derivs[[k1]] <- NULL
@@ -122,7 +122,7 @@ get_derivatives <- function(list_of_beta,
     betaT_theta_derivs <- do.call("rbind", betaT_theta_derivs)
     beta_theta_derivs <- do.call("rbind", beta_theta_derivs)
     beta_betaT_derivs <- do.call("rbind", beta_betaT_derivs)
-    
+
     if (K==1) {
       beta_betaT_derivs <- NULL
       beta_theta_derivs <- NULL
@@ -189,8 +189,9 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     stats[[ii]]$d3link <- fam$d3link
     stats[[ii]]$d4link <- fam$d4link
   }
+  print(stats[[1]]$mu.eta)
   fam_env <- new.env()
-  
+
   ## Save parameters to global env
   # logP
   assign(".logP", logP, envir = environment())
@@ -206,7 +207,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   assign(".lpi", "unassigned", envir = fam_env)
   getlpi <- function() get(".lpi", envir = fam_env)
   putlpi <- function(.x) assign(".lpi", .x, envir = fam_env)
-  
+
   # inner
   assign(".inner", inner_funcs, envir = environment())
   getInner <- function() get(".inner")
@@ -355,7 +356,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       id_mat <- matrix(0, nrow = N, ncol = K)
 
       id_mat[matrix(c(1:N, y), ncol = 2)] <- 1
-      
+
       if (K > 1) {
         for (k in 1:(K-1)) {
           y1 <- id_mat[,k+1]
@@ -528,6 +529,47 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     return(list(l = l, lb = lb, lbb = lbb))
   }
 
+  jacobian <- function(eta, jj){
+    print("I'm here")
+    print(eta)
+
+    # Values we need
+    # Inner functions
+    # K
+    # lpi
+
+
+    # Consider outer and inner weights seperately
+    # --------------------------------------------------------------------------
+    # Outer weight jacobian (jj in (1:K-1))
+    K <- ncol(alpha)
+    alpha <- cbind(1, exp(eta[1:(K-1)])) / rowSums(cbind(1, exp(eta[1:(K-1)])))
+    # D alpha / D eta
+    DaDe <- sapply(1:(K - 1), function(.kk) {
+      alpha[, jj] * (as.numeric(jj == .kk + 1) - alpha[, .kk + 1])
+    })
+    if(nrow(alpha) == 1) { DaDe <- matrix(DaDe, nrow = 1) }
+
+
+    # Inner weight jacobian (jj in (K:n))
+    for (k in 1:length(list_of_inner_functions)) {
+      eval_store[[k]] <- eval_deriv(list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]],deriv = 1)
+      if (attr(list_of_inner_functions[[k]], "name") == "id") {
+        eval_store[[k]]$f_eval <- matrix(1, nrow = nrow(alpha_matrix))
+      }
+    }
+
+    eval_store[[jj]]$f_eta_eval()
+    eval_store[[jj]]$f_theta_eval()
+
+    # --------------------------------------------------------------------------
+    # Consider multiplied weights
+    # --------------------------------------------------------------------------
+    # TODO
+
+
+  }
+
   predict <- function(family,se=FALSE,eta=NULL,y=NULL,X=NULL,
                       beta=NULL,off=NULL,Vb=NULL) {
     ## optional function to give predicted values - idea is that
@@ -540,20 +582,20 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     list_of_inner_functions <- family$getInner()
 
     lpi <- family$getlpi()
-    
+
     K <- length(list_of_inner_functions)
     N <- nrow(X)
     # get eta parameters
     list_of_beta <- list()
     list_of_X_eta <- list()
-    
+
     if (K > 1) {
       for (ii in (1:(K-1))) {
         list_of_beta[[ii]] <- beta[lpi[[ii]]]
         list_of_X_eta[[ii]] <- X[, lpi[[ii]]]
       }
     }
-    
+
     list_of_eta <- get_list_of_eta(list_of_X_eta, list_of_beta)
     list_of_betaT <- list()
     list_of_X_etaT <- list()
@@ -597,20 +639,16 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       }
     }
 
-# In development version of fam_stack
-#    jacobian(eta, jj)
-#        jj is index of jacobian
-
     inner_weights <- list()
     for (k in 1:length(list_of_inner_functions)) {
       inner_weights[[k]] <- eval_deriv(list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]], deriv = 0)
     }
-    
+
     outer_weights <- eta_to_alpha(list_of_eta)
     if (K == 1) {
       outer_weights <- matrix(1, nrow = N)
     }
-    
+
     for (i in 1:length(inner_weights)) {
       inner_weights[[i]] <- inner_weights[[i]]$f_eval
       if (nrow(inner_weights[[i]]) != N) {
@@ -646,7 +684,8 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
                  n_each_eta = n_each_eta,
                  preinitialize = preinitialize,
                  initialize = initialize,
-                 mu.eta = stats$mu.eta,
+                 jacobian = jacobian,
+                 mu.eta = stats[[1]]$mu.eta,
                  # postproc=postproc,
                  tri = mgcv::trind.generator(max(1, K - 1)), ## symmetric indices for accessing deriv. arrays
                  residuals=residuals,

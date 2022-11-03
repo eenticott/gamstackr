@@ -3,7 +3,7 @@
 .jacobian_wrap <- function(o, dat, jj, ...){
   # NB stats:: needed otherwise we end up using the predict() defined
   # in the family!!
-  eta <- predict(o, newdata = dat, ...)
+  eta <- as.matrix(predict(o, newdata = dat, ...))
   # D sigma / D eta
   DmuDeta <- o$family$jacobian(eta = eta, jj = jj)
   # Dalpha/Dbeta = Dalpha/Deta * Deta/Dbeta

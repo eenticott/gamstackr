@@ -1,6 +1,7 @@
 load("Data/GEF14.RData")
 library(tidyverse)
 library(mgcv)
+library(mgcViz)
 head(GEF14)
 
 dTrain <- subset(GEF14, year <= 2008)
@@ -68,7 +69,7 @@ preds <- predict(fitStack, type = "response")
 fitStack2 <- getViz(fitStack)
 
 library(mgcViz)
-plot(ALE(fitStack2, x = "toy", oind = 1))
+plot(ALE(fitStack2, x = "toy", oind = 1, type = "response"))
 
 predict(fitStack)
 

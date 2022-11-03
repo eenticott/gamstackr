@@ -1,5 +1,21 @@
 # TODO: Make more efficient by saving X_eta, X_etaT in preinit
 
+
+#' get_derivatives
+#'
+#' @param list_of_beta
+#' @param list_of_betaT
+#' @param list_of_theta
+#' @param list_of_X_eta
+#' @param list_of_X_etaT
+#' @param list_of_inner_functions
+#' @param list_of_densities
+#' @param derivs
+#'
+#' @return
+#' @export
+#'
+#' @examples
 get_derivatives <- function(list_of_beta,
                             list_of_betaT,
                             list_of_theta,
@@ -189,8 +205,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     stats[[ii]]$d3link <- fam$d3link
     stats[[ii]]$d4link <- fam$d4link
   }
-  print(stats[[1]]$mu.eta)
-  fam_env <- new.env()
+
 
   ## Save parameters to global env
   # logP
@@ -206,7 +221,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   # lpi
   assign(".lpi", "unassigned", envir = fam_env)
   getlpi <- function() get(".lpi", envir = fam_env)
-  putlpi <- function(.x) assign(".lpi", .x, envir = fam_env)
+  putlpi <- function(.x) assign(".lpi", .x, envir = environment(sys.function))
 
   # inner
   assign(".inner", inner_funcs, envir = environment())
@@ -239,6 +254,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     G$X <- cbind(G$X,matrix(0,nrow(G$X),ntheta)) ## add dummy columns to G$X
     attr(G$X, "lpi") <- atr$lpi
     attr(G$X, "dim") <- c(nrow(G$X), ncol(G$X))
+    putlpi(atr$lpi)
     if (!is.null(G$Sl))
       attr(G$Sl, "E") <- cbind(attr(G$Sl, "E"),
                                matrix(0, nbeta, ntheta))
@@ -322,7 +338,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
           }
       }
 
-      list_of_etaT <- get_list_of_eta(list_of_X_etaT, list_of_betaT)
+      list_of_etaT <- .internals()[["get_list_of_eta"]](list_of_X_etaT, list_of_betaT)
 
       # INITIAL THETAS
       list_of_theta <- list()
@@ -343,7 +359,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       # INITIAL BETAS
       eval_store <- list()
       for (k in 1:length(inners)) {
-        f_eval <- eval_deriv(inners[[k]], list_of_etaT[[k]], list_of_theta[[k]],deriv = 0)$f_eval
+        f_eval <- .internals()[["eval_deriv"]](inners[[k]], list_of_etaT[[k]], list_of_theta[[k]],deriv = 0)$f_eval
         p <- list_of_densities[[k]]
         if(nrow(p) != nrow(f_eval)) {
           f_eval = matrix(1, nrow = nrow(p))
@@ -384,11 +400,13 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     ## coef: 1 : K-1 coefs for outer models
     ##       K+c(0,cumsum(neta))[i] : K+c(0,cumsum(neta))[i+1] coefs for inner model i
     #print(str(x))
-    lpi <- attr(x,"lpi")
-    lpiflag <- family$getlpi()
-    if (lpiflag == "unassigned") {
-      family$putlpi(lpi)
+    given_lpi <- attr(x,"lpi")
+    lpi <- getlpi()
+
+    if (!identical(given_lpi, lpi)) {
+      stop("Mismatch in design matrices.")
     }
+
     if (is.null(lpi)) {
       stop("Missing design matrix.")
     }
@@ -530,25 +548,29 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   }
 
   jacobian <- function(eta, jj){
-    print("I'm here")
-    print(eta)
-
     # Values we need
     # Inner functions
+    inners <- getInner()
     # K
+    K <- length(inners)
     # lpi
-
+    lpi <- getlpi()
 
     # Consider outer and inner weights seperately
     # --------------------------------------------------------------------------
     # Outer weight jacobian (jj in (1:K-1))
-    K <- ncol(alpha)
-    alpha <- cbind(1, exp(eta[1:(K-1)])) / rowSums(cbind(1, exp(eta[1:(K-1)])))
-    # D alpha / D eta
-    DaDe <- sapply(1:(K - 1), function(.kk) {
-      alpha[, jj] * (as.numeric(jj == .kk + 1) - alpha[, .kk + 1])
-    })
-    if(nrow(alpha) == 1) { DaDe <- matrix(DaDe, nrow = 1) }
+
+    if (jj < K) {
+      alpha <- cbind(1, exp(eta[1:(K-1)])) / rowSums(cbind(1, exp(eta[1:(K-1)])))
+      # D alpha / D eta
+      DaDe <- sapply(1:(K - 1), function(.kk) {
+        alpha[, jj] * (as.numeric(jj == .kk + 1) - alpha[, .kk + 1])
+      })
+      if(nrow(alpha) == 1) { DaDe <- matrix(DaDe, nrow = 1) }
+    } else {
+      k <- jj - (K-1)
+      inners[[k]](list_of_etaT[[k]])
+    }
 
 
     # Inner weight jacobian (jj in (K:n))

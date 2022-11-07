@@ -4,7 +4,7 @@
 \alias{id}
 \title{Produces equal weights without any dependence on parameters}
 \usage{
-id(num_weights, N)
+id()
 }
 \arguments{
 \item{num_weights}{Integer: How many equally weighted parts}

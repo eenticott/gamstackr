@@ -1,15 +1,13 @@
 load("Data/GEF14.RData")
 library(tidyverse)
 library(mgcv)
+library(mgcViz)
 head(GEF14)
 
 dTrain <- subset(GEF14, year <= 2008)
 dStack <- subset(GEF14, year > 2008 & year <= 2010)
 dTest  <- subset(GEF14, year == 2011)
 
-dTrain <- dTrain %>% mutate_if(is.numeric,~scale(.) %>% as.vector)
-dStack <- dStack %>% mutate_if(is.numeric,~scale(.) %>% as.vector)
-dTest <- dTest %>% mutate_if(is.numeric,~scale(.) %>% as.vector)
 
 # Fit experts ------------------------------------------------------------------------
 fit1 <- bam(load ~ s(load24, k = 8, bs = "cr") + dow, discrete = T, data = dTrain)
@@ -22,64 +20,59 @@ fit2 <- bam(load ~ s(load24, k = 8, bs = "cr") +
 
 summary(fit2)
 
+
 fit3 <- bam(load ~ s(load24, k = 8, bs = "cr") +
               s(tod, k = 12, bs = "cc") +
               s(toy, k = 20, bs = "cc") +
               s(temp, k = 20, bs = "cr") +
               s(temp95, k = 20, bs = "cr") +
-              dow, discrete = T, data = dTrain)
+              dow, discrete = T, data = subset(dTrain, toy < 0.33))
 
-summary(fit3)
+fit4 <- bam(load ~ s(load24, k = 8, bs = "cr") +
+              s(tod, k = 12, bs = "cc") +
+              s(toy, k = 20, bs = "cc") +
+              s(temp, k = 20, bs = "cr") +
+              s(temp95, k = 20, bs = "cr") +
+              dow, discrete = T, data = subset(dTrain, toy < 0.66 & toy >= 0.33))
 
-#dStack <- dStack[1:4000,]
+fit5 <- bam(load ~ s(load24, k = 8, bs = "cr") +
+              s(tod, k = 12, bs = "cc") +
+              s(toy, k = 20, bs = "cc") +
+              s(temp, k = 20, bs = "cr") +
+              s(temp95, k = 20, bs = "cr") +
+              dow, discrete = T, data = subset(dTrain, toy >= 0.66))
 
 p1 <- predict(fit1, newdata = dStack)
 p2 <- predict(fit2, newdata = dStack)
 p3 <- predict(fit3, newdata = dStack)
+p4 <- predict(fit4, newdata = dStack)
+p5 <- predict(fit5, newdata = dStack)
 
 den1 <- dnorm(dStack$load, p1, sqrt(fit1$sig2), log = FALSE)
 den2 <- dnorm(dStack$load, p2, sqrt(fit2$sig2), log = FALSE)
 den3 <- dnorm(dStack$load, p3, sqrt(fit3$sig2), log = FALSE)
+den4 <- dnorm(dStack$load, p4, sqrt(fit4$sig2), log = FALSE)
+den5 <- dnorm(dStack$load, p5, sqrt(fit5$sig2), log = FALSE)
 
-dens <- cbind(den1, den2, den3)
-list_of_densities <- list(dens)
+dens1 <- cbind(den3, den4, den5)
+dens2 <- cbind(den1, den2)
 
-#list_of_beta <- list()
-#list_of_betaT <- list(c(0))
-#list_of_theta <- list(1)
-
-#list_of_X_eta <- list()
-#list_of_X_etaT <- (list(matrix(rep(1, 1000), nrow = 1000)))
-
-
-#fitStack <- gam(list(load ~ 1 + s(temp)), data = dStack, family = NestedStack(list_of_densities, inners), control = list(trace = T))
-
-#G = NestedStack(list_of_densities, inners)
-#G$Sl <- Sl.setup(G)
-#G$X <- Sl.initial.repara(G$Sl, G$X, both.sides = FALSE)
-
-
-m1 = mean((predict(fit1, newdata = dStack) - dStack$load)^2)
-m2 = mean((predict(fit2, newdata = dStack) - dStack$load)^2)
-m3 = mean((predict(fit3, newdata = dStack) - dStack$load)^2)
-
-v1 = sqrt(var((predict(fit1, newdata = dStack) - dStack$load)^2))
-v2 = sqrt(var((predict(fit2, newdata = dStack) - dStack$load)^2))
-v3 = sqrt(var((predict(fit3, newdata = dStack) - dStack$load)^2))
-
-x <- matrix(c(m1, m2, m3, v1, v2, v3), nrow = 2, byrow = T)
-inner_MVN <- MVN_weights(x, 2)
 inner_ordinal <- ordinal(3)
-inner_id <- id()
+inner_MVN <- MVN_weights(x = matrix(c(1,0,0,1), nrow = 2), dim_num = 2)
 inners <- list(inner_ordinal, inner_MVN)
-
-list_of_densities <- list(dens, dens)
+list_of_densities <- list(dens1, dens2)
 pre_fam <- NestedStack(list_of_densities, inners, RidgePen = 1e-04)
 
-fitStack <- gam(list(load ~ s(tod), ~ s(temp), ~1, ~1), data = dStack, family = pre_fam, control = gam.control(trace = TRUE))
+fitStack <- gam(list(load ~ 1, ~s(toy), ~1, ~1), data = dStack, family = pre_fam, control = gam.control(trace = TRUE, maxit = 50))
+
+fitStack$family$putCoef(fitStack$coefficients)
 
 summary(fitStack)
 
 preds <- predict(fitStack, type = "response")
+fitStack2 <- getViz(fitStack)
 
-preds
+plot(ALE(fitStack2, x = "toy", oind = 2, type = "response"))
+
+predict(fitStack)
+

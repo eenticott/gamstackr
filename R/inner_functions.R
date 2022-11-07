@@ -21,6 +21,11 @@ max_index_mat <- function(n) { # used in ordinal penalty
 #' @examples
 #' ordinal(3)
 ordinal <- function(num_weights) { # nolint
+  if (num_weights <= 2) {
+    stop("Ordinal weights require at least 3 experts.")
+  }
+
+
   F <- function(x) {
     1 / (1 + exp(- (x)))
   }
@@ -143,7 +148,6 @@ ordinal <- function(num_weights) { # nolint
     store <- list()
     tau <- c(stats::qlogis(1/num_weights), tau)
     theta <- c(tau[1], tau[1] + cumsum(exp(tau[-1])))
-
     store$f_eval <- f(eta, theta)
 
     if (deriv >= 1) {
@@ -151,30 +155,37 @@ ordinal <- function(num_weights) { # nolint
 
       # Take cumulative sum of reverse order, then reverse so sum at front and just last term at end
       store$f_theta_eval <- list_by_vector(rev(mat_cumsum(rev(f_theta(eta, theta)))), c(tau[1], exp(tau[-1])))[-1]
+      if (num_weights == 2) {
+        store$f_theta_eval <- NULL
 
+      }
       if (deriv >= 2) {
         store$f_eta2_eval <- f_eta2(eta, theta)
 
         store$f_eta_theta_eval <- list_by_vector(rev(mat_cumsum(rev(f_eta_theta(eta, theta)))),
                                                  c(tau[1], exp(tau[-1])))[-1]
+        if (num_weights > 2) {
+          f_theta2_orig <- f_theta2(eta, theta)
+          f_theta2_d <- get_diag(f_theta2_orig)
+          sums <- rev(mat_cumsum(rev(f_theta2_d[-1])))
+          f_theta2_eval <- list()
+          exp_taus <- exp(tau[-1])
+          d <- length(theta)
+          for (i in 2:d) {
+            f_theta2_eval[[i - 1]] <- list()
+            for (j in 2:d) {
+              f_theta2_eval[[i - 1]][[j - 1]] <- exp_taus[i - 1] * exp_taus[j - 1] *
+                sums[[intersect((i:d) - 1, (j:d) - 1)[1]]]
+              if (i == j) {
+                f_theta2_eval[[i - 1]][[j - 1]] <- f_theta2_eval[[i - 1]][[j - 1]] + store$f_theta_eval[[i - 1]]
+              }
 
-        f_theta2_orig <- f_theta2(eta, theta)
-        f_theta2_d <- get_diag(f_theta2_orig)
-        sums <- rev(mat_cumsum(rev(f_theta2_d[-1])))
-        f_theta2_eval <- list()
-        exp_taus <- exp(tau[-1])
-        d <- length(theta)
-        for (i in 2:d) {
-          f_theta2_eval[[i - 1]] <- list()
-          for (j in 2:d) {
-            f_theta2_eval[[i - 1]][[j - 1]] <- exp_taus[i - 1] * exp_taus[j - 1] *
-              sums[[intersect((i:d) - 1, (j:d) - 1)[1]]]
-            if (i == j) {
-              f_theta2_eval[[i - 1]][[j - 1]] <- f_theta2_eval[[i - 1]][[j - 1]] + store$f_theta_eval[[i - 1]]
             }
-
           }
+        } else {
+          f_theta2_eval <- list(NULL)
         }
+
         store$f_theta2_eval <- f_theta2_eval
       }
     }
@@ -189,6 +200,9 @@ ordinal <- function(num_weights) { # nolint
     tau <- c(fixed_tau, init_tau, 1)
     theta <- c(fixed_tau - 1, tau[1], tau[1] + cumsum(exp(tau[-1])))
     mustart <- (theta[y1 + 1] + theta[y1]) / 2
+    if (num_weights == 2) {
+      init_tau <- NULL
+    }
     return(list(init_mu = mustart, init_theta = init_tau))
   }
 
@@ -210,8 +224,8 @@ ordinal <- function(num_weights) { # nolint
   }
 
   name = "ordinal"
-  
-  return(structure(get_derivs, init_func = init_func, theta_pen = pen, neta = 1, ntheta = num_weights - 2, name = "ordinal"))
+
+  return(structure(get_derivs, init_func = init_func, theta_pen = pen, neta = 1, ntheta = num_weights - 2, num_weights = num_weights, name = "ordinal"))
 }
 
 # Multivariate normal inner functions ------------------------------------------
@@ -389,7 +403,7 @@ MVN_weights <- function(x, dim_num) {
 
       pen_hess <- diag((4 * theta - 2 * v) * theta)
     }
-  
+
 
     return(list(p = pen, pt = pen_grad, ptt = pen_hess))
   }
@@ -402,6 +416,7 @@ MVN_weights <- function(x, dim_num) {
     neta = dim_num,
     ntheta = dim_num,
     theta_pen = pen,
+    num_weights = n_k,
     name = name
   ))
 }
@@ -458,9 +473,9 @@ id <- function() {
   init_func <- function(densities) {
     return(list(init_theta = NULL, init_mu = NULL))
   }
-  
+
   name <- "id"
 
-  return(structure(get_derivs, neta = 0, ntheta = 0, theta_pen = pen, init_func = init_func, name = name))
+  return(structure(get_derivs, neta = 0, ntheta = 0, theta_pen = pen, init_func = init_func, num_weights = 1, name = name))
 }
 

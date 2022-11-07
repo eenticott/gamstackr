@@ -88,3 +88,14 @@ get_diag <- function(list_of_lists) {
 matrix_to_lov <- function(X) {
   lapply(seq_len(ncol(X)), function(i) X[,i])
 }
+
+#' Internals
+#'
+#' @return List of internal functions to be exported
+#' @export
+.internals <- function() {
+  internals <- list()
+  internals[["get_list_of_eta"]] <- get_list_of_eta
+  internals[["eval_deriv"]] <- eval_deriv
+  return(internals)
+}

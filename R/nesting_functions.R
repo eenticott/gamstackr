@@ -1,5 +1,5 @@
 # Implements derivatives given the inner function derivatives.
-
+rowSums <- Rfast::rowsums
 # h is a commonly seen function in the derivatives
 h <- function(dens, f_deriv, ll_alpha) {
   if (is.list(f_deriv)) {

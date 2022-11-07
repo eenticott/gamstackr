@@ -1,4 +1,6 @@
 # Functions that can be used for internal model weights and derivatives
+rowSums <- Rfast::rowsums
+
 #' Matrix of max(i,j) where i,j are matrix coords
 #'
 #' @param n Integer: Size of n x n matrix

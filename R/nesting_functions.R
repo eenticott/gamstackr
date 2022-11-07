@@ -5,10 +5,10 @@ h <- function(dens, f_deriv, ll_alpha) {
   if (is.list(f_deriv)) {
     out <- list()
     for (i in 1:length(f_deriv)) {
-      out[[i]] <- rowSums(dens * f_deriv[[i]]) * ll_alpha
+      out[[i]] <- Rfast::rowsums(dens * f_deriv[[i]]) * ll_alpha
     }
   } else {
-    out <-  rowSums(dens * f_deriv) * ll_alpha
+    out <-  Rfast::rowsums(dens * f_deriv) * ll_alpha
   }
   return(out)
 }
@@ -189,7 +189,7 @@ ll_betaT2 <- function(ll_alpha, f_eta2T_eval, list_of_ll_etaT, k1, k2, list_of_d
       part2 = list_of_ll_etaT[[k1]][[alpha]] * list_of_ll_etaT[[k2]][[beta]]
 
       output <- XtDX(list_of_X_etaT[[k1]][[alpha]], part1 - part2, list_of_X_etaT[[k2]][[beta]])
-      
+
       out[[alpha]][[beta]] <- output
     }
     out[[alpha]] <- do.call("cbind", out[[alpha]])

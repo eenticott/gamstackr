@@ -225,7 +225,7 @@ ordinal <- function(num_weights) { # nolint
 
   name = "ordinal"
 
-  return(structure(get_derivs, init_func = init_func, theta_pen = pen, neta = 1, ntheta = num_weights - 2, name = "ordinal"))
+  return(structure(get_derivs, init_func = init_func, theta_pen = pen, neta = 1, ntheta = num_weights - 2, num_weights = num_weights, name = "ordinal"))
 }
 
 # Multivariate normal inner functions ------------------------------------------
@@ -416,6 +416,7 @@ MVN_weights <- function(x, dim_num) {
     neta = dim_num,
     ntheta = dim_num,
     theta_pen = pen,
+    num_weights = n_k,
     name = name
   ))
 }
@@ -475,6 +476,6 @@ id <- function() {
 
   name <- "id"
 
-  return(structure(get_derivs, neta = 0, ntheta = 0, theta_pen = pen, init_func = init_func, name = name))
+  return(structure(get_derivs, neta = 0, ntheta = 0, theta_pen = pen, init_func = init_func, num_weights = 1, name = name))
 }
 

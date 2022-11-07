@@ -187,10 +187,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   K <- length(inner_funcs)
   n_each_eta <- lapply(inner_funcs, function(x) attr(x, "neta"))
   n_each_theta <- lapply(inner_funcs, function(x) attr(x, "ntheta"))
-  ## adjust log-densities for numerical stability
-  #X <- logP - matrixStats::rowMaxs(logP)
-  #expX <- exp(X)
-
+  n_each_weight <- lapply(inner_funcs, function(x) attr(x, "num_weights"))
   logP <- lapply(P, log)
 
   # Prepare link functions
@@ -206,22 +203,21 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     stats[[ii]]$d4link <- fam$d4link
   }
 
-
   ## Save parameters to global env
   # logP
   assign(".logP", logP, envir = environment())
   getLogP <- function() get(".logP")
-  putLogP <- function(.x) assign(".logP", .x, envir = environment(sys.function))
+  putLogP <- function(.x) assign(".logP", .x, envir = environment(sys.function()))
 
   # P
   assign(".P", P, envir = environment())
   getP <- function() get(".P")
-  putP <- function(.x) assign(".P", .x, envir = environment(sys.function))
+  putP <- function(.x) assign(".P", .x, envir = environment(sys.function()))
 
   # lpi
-  assign(".lpi", "unassigned", envir = fam_env)
-  getlpi <- function() get(".lpi", envir = fam_env)
-  putlpi <- function(.x) assign(".lpi", .x, envir = environment(sys.function))
+  assign(".lpi", NULL, envir = environment())
+  getlpi <- function() get(".lpi")
+  putlpi <- function(.x) assign(".lpi", .x, envir = environment(sys.function()))
 
   # inner
   assign(".inner", inner_funcs, envir = environment())
@@ -235,12 +231,19 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   assign(".nparams", ntheta + neta + K - 1, envir = environment())
   getNparams <- function() get(".nparams")
 
+  # num_weights
+  assign(".nweights", n_each_weight, envir = environment())
+  getNweights <- function() get(".nweights")
+
+  # coef
+  assign(".coef", NULL, envir = environment())
+  getCoef <- function() get(".coef")
+  putCoef <- function(.x) assign(".coef", .x, envir = environment(sys.function()))
+
   # copied residuals from fam_stackProb
   residuals <- function(object, type=c("deviance","pearson","response")) {
     return(as.matrix(object$y)[, 1])
   }
-
-  # ignore postproc
 
   #######
   preinitialize <- function(G) {
@@ -556,40 +559,65 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     # lpi
     lpi <- getlpi()
 
+    browser()
+
     # Consider outer and inner weights seperately
     # --------------------------------------------------------------------------
     # Outer weight jacobian (jj in (1:K-1))
 
     if (jj < K) {
-      alpha <- cbind(1, exp(eta[1:(K-1)])) / rowSums(cbind(1, exp(eta[1:(K-1)])))
+      alpha <- cbind(1, exp(eta[,1:(K-1)])) / rowSums(cbind(1, exp(eta[,1:(K-1)])))
       # D alpha / D eta
       DaDe <- sapply(1:(K - 1), function(.kk) {
         alpha[, jj] * (as.numeric(jj == .kk + 1) - alpha[, .kk + 1])
       })
       if(nrow(alpha) == 1) { DaDe <- matrix(DaDe, nrow = 1) }
-    } else {
-      k <- jj - (K-1)
-      inners[[k]](list_of_etaT[[k]])
+      idx <- 1:(K-1)
+      return(structure(dv = DaDe, idx = idx))
     }
+    # Inner weight jacobian (jj >= K)
+    k <- jj - (K-1) # get index excluding outer etas
+    coefs <- getCoef()
+    n_each_weight <- getNweights()
+    # get which branch of inner weights we need
+    w <- min(which(k <= cumsum(n_each_weight)))
+    w_idx <- k - c(0, cumsum(n_each_weight))[w]
+    # use for indexing correctly
+    each_eta <- c(0,cumsum(n_each_eta))
+    each_theta <- c(0,cumsum(n_each_theta))
+    ntheta <- do.call("sum", n_each_theta)
+    neta <- do.call("sum", n_each_eta)
+    ncoef <- length(coefs)
 
+    # Need list_of_etaT[[w]] and list_of_theta[[w]]
+    etaT <- eta[,(K-1 + each_eta[w] + 1):(K-1 + each_eta[w+1])]
+    theta <- coefs[(ncoef - ntheta + each_theta[w] + 1):(ncoef - ntheta + each_theta[w+1])]
 
-    # Inner weight jacobian (jj in (K:n))
-    for (k in 1:length(list_of_inner_functions)) {
-      eval_store[[k]] <- eval_deriv(list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]],deriv = 1)
-      if (attr(list_of_inner_functions[[k]], "name") == "id") {
-        eval_store[[k]]$f_eval <- matrix(1, nrow = nrow(alpha_matrix))
+    derivs <- eval_deriv(inners[[w]], etaT, theta, deriv = 1)
+
+    if (is.list(derivs$f_eta_eval)) {
+      eta_deriv <- matrix(nrow = nrow(eta),ncol = length(derivs$f_eta_eval))
+      for (i in 1:length(derivs$f_eta_eval)) {
+        eta_deriv[,i] <- derivs$f_eta_eval[[i]][,w_idx]
       }
+    } else {
+      eta_deriv <- as.matrix(derivs$f_eta_eval[,w_idx])
     }
 
-    eval_store[[jj]]$f_eta_eval()
-    eval_store[[jj]]$f_theta_eval()
+    if (is.list(derivs$f_theta_eval)) {
+      theta_deriv <- matrix(nrow = nrow(eta),ncol = length(derivs$f_theta_eval))
+      for (i in 1:length(derivs$f_theta_eval)) {
+        theta_deriv[,i] <- derivs$f_theta_eval[[i]][,w_idx]
+      }
+    } else {
+      theta_deriv <- as.matrix(derivs$f_theta_eval[,w_idx])
+    }
 
-    # --------------------------------------------------------------------------
-    # Consider multiplied weights
-    # --------------------------------------------------------------------------
-    # TODO
+    # which index do they belong
+    eta_idx <- (K-1 + each_eta[w] + 1):(K-1 + each_eta[w+1])
+    theta_idx <- (K - 1 + neta + each_theta[w] + 1):(K - 1 + neta + each_theta[w+1])
 
-
+    return(structure(dv = cbind(eta_deriv, theta_deriv), idx = c(eta_idx, theta_idx)))
   }
 
   predict <- function(family,se=FALSE,eta=NULL,y=NULL,X=NULL,
@@ -701,6 +729,8 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
                  putlpi = putlpi,
                  getInner = getInner,
                  getNparams = getNparams,
+                 getCoef = getCoef,
+                 putCoef = putCoef,
                  n.theta = n.theta,
                  n_each_theta = n_each_theta,
                  n_each_eta = n_each_eta,

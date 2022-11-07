@@ -54,22 +54,25 @@ den3 <- dnorm(dStack$load, p3, sqrt(fit3$sig2), log = FALSE)
 den4 <- dnorm(dStack$load, p4, sqrt(fit4$sig2), log = FALSE)
 den5 <- dnorm(dStack$load, p5, sqrt(fit5$sig2), log = FALSE)
 
-dens <- cbind(den3, den4, den5)
+dens1 <- cbind(den3, den4, den5)
+dens2 <- cbind(den1, den2)
 
 inner_ordinal <- ordinal(3)
-inners <- list(inner_ordinal)
-list_of_densities <- list(dens)
+inner_MVN <- MVN_weights(x = matrix(c(1,0,0,1), nrow = 2), dim_num = 2)
+inners <- list(inner_ordinal, inner_MVN)
+list_of_densities <- list(dens1, dens2)
 pre_fam <- NestedStack(list_of_densities, inners, RidgePen = 1e-04)
 
-fitStack <- gam(list(load ~ s(toy)), data = dStack, family = pre_fam, control = gam.control(trace = TRUE))
+fitStack <- gam(list(load ~ 1, ~s(toy), ~1, ~1), data = dStack, family = pre_fam, control = gam.control(trace = TRUE, maxit = 50))
+
+fitStack$family$putCoef(fitStack$coefficients)
 
 summary(fitStack)
 
 preds <- predict(fitStack, type = "response")
 fitStack2 <- getViz(fitStack)
 
-library(mgcViz)
-plot(ALE(fitStack2, x = "toy", oind = 1, type = "response"))
+plot(ALE(fitStack2, x = "toy", oind = 2, type = "response"))
 
 predict(fitStack)
 

@@ -559,12 +559,19 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     # lpi
     lpi <- getlpi()
 
-    browser()
+    if ( !is.matrix(eta) ){
+      eta <- as.matrix(eta)
+    }
+    #browser()
 
-    # Consider outer and inner weights seperately
+    # Consider outer and inner weights separately
     # --------------------------------------------------------------------------
     # Outer weight jacobian (jj in (1:K-1))
-
+  
+    # Special case, only one multinomial weight equal to one
+    if (jj == 1 && K == 1){
+      return(NULL)
+    }
     if (jj < K) {
       alpha <- cbind(1, exp(eta[,1:(K-1)])) / rowSums(cbind(1, exp(eta[,1:(K-1)])))
       # D alpha / D eta
@@ -572,8 +579,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
         alpha[, jj] * (as.numeric(jj == .kk + 1) - alpha[, .kk + 1])
       })
       if(nrow(alpha) == 1) { DaDe <- matrix(DaDe, nrow = 1) }
-      idx <- 1:(K-1)
-      return(structure(dv = DaDe, idx = idx))
+      return(list(dv = DaDe, idx = list(eta_idx = 1:(K-1))))
     }
     # Inner weight jacobian (jj >= K)
     k <- jj - (K-1) # get index excluding outer etas
@@ -590,8 +596,13 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     ncoef <- length(coefs)
 
     # Need list_of_etaT[[w]] and list_of_theta[[w]]
-    etaT <- eta[,(K-1 + each_eta[w] + 1):(K-1 + each_eta[w+1])]
-    theta <- coefs[(ncoef - ntheta + each_theta[w] + 1):(ncoef - ntheta + each_theta[w+1])]
+    
+    # Get indexes of inner etas (along lpi) and thetas (along coef vectors)
+    eta_idx <- (K-1 + each_eta[w] + 1):(K-1 + each_eta[w+1])
+    theta_idx <- (ncoef - ntheta + each_theta[w] + 1):(ncoef - ntheta + each_theta[w+1])
+    
+    etaT <- eta[,eta_idx]
+    theta <- coefs[theta_idx]
 
     derivs <- eval_deriv(inners[[w]], etaT, theta, deriv = 1)
 
@@ -613,11 +624,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       theta_deriv <- as.matrix(derivs$f_theta_eval[,w_idx])
     }
 
-    # which index do they belong
-    eta_idx <- (K-1 + each_eta[w] + 1):(K-1 + each_eta[w+1])
-    theta_idx <- (K - 1 + neta + each_theta[w] + 1):(K - 1 + neta + each_theta[w+1])
-
-    return(structure(dv = cbind(eta_deriv, theta_deriv), idx = c(eta_idx, theta_idx)))
+    return(list(dv = cbind(eta_deriv, theta_deriv), idx = list(eta_idx = eta_idx, theta_idx = theta_idx)))
   }
 
   predict <- function(family,se=FALSE,eta=NULL,y=NULL,X=NULL,

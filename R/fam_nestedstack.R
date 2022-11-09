@@ -550,7 +550,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     return(list(l = l, lb = lb, lbb = lbb))
   }
 
-  jacobian <- function(eta, jj){
+  jacobian <- function(eta, jj, ...){
     # Values we need
     # Inner functions
     inners <- getInner()
@@ -570,7 +570,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   
     # Special case, only one multinomial weight equal to one
     if (jj == 1 && K == 1){
-      return(NULL)
+      return(eta * 0)
     }
     if (jj < K) {
       alpha <- cbind(1, exp(eta[,1:(K-1)])) / rowSums(cbind(1, exp(eta[,1:(K-1)])))
@@ -579,7 +579,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
         alpha[, jj] * (as.numeric(jj == .kk + 1) - alpha[, .kk + 1])
       })
       if(nrow(alpha) == 1) { DaDe <- matrix(DaDe, nrow = 1) }
-      return(list(dv = DaDe, idx = list(eta_idx = 1:(K-1))))
+      return(list(DmuDeta = DaDe, eta_idx = 1:(K-1)))
     }
     # Inner weight jacobian (jj >= K)
     k <- jj - (K-1) # get index excluding outer etas
@@ -624,7 +624,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       theta_deriv <- as.matrix(derivs$f_theta_eval[,w_idx])
     }
 
-    return(list(dv = cbind(eta_deriv, theta_deriv), idx = list(eta_idx = eta_idx, theta_idx = theta_idx)))
+    return(list(DmuDeta = eta_deriv, DmuDtheta = theta_deriv, eta_idx = eta_idx, theta_idx = theta_idx))
   }
 
   predict <- function(family,se=FALSE,eta=NULL,y=NULL,X=NULL,

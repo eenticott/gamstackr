@@ -582,7 +582,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       return(list(DmuDeta = DaDe, eta_idx = 1:(K-1)))
     }
     # Inner weight jacobian (jj >= K)
-    k <- jj - (K-1) # get index excluding outer etas
+    k <- jj - K # get index excluding outer etas
     coefs <- getCoef()
     n_each_weight <- getNweights()
     # get which branch of inner weights we need

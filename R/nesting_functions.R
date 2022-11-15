@@ -1,14 +1,14 @@
 # Implements derivatives given the inner function derivatives.
-rowSums <- Rfast::rowsums
+rowSums <- matrixStats::rowSums2
 # h is a commonly seen function in the derivatives
 h <- function(dens, f_deriv, ll_alpha) {
   if (is.list(f_deriv)) {
     out <- list()
     for (i in 1:length(f_deriv)) {
-      out[[i]] <- Rfast::rowsums(dens * f_deriv[[i]]) * ll_alpha
+      out[[i]] <- rowSums(dens * f_deriv[[i]]) * ll_alpha
     }
   } else {
-    out <-  Rfast::rowsums(dens * f_deriv) * ll_alpha
+    out <-  rowSums(dens * f_deriv) * ll_alpha
   }
   return(out)
 }

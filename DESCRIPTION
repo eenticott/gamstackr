@@ -18,4 +18,4 @@ Imports:
     matrixStats,
     mgcv,
     stats,
-    Rfast
+

@@ -1,5 +1,5 @@
 # TODO: Make more efficient by saving X_eta, X_etaT in preinit
-
+# TODO: Add function that takes outer_then_inner and gives multiplied_weights
 
 #' get_derivatives
 #'
@@ -567,7 +567,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     # Consider outer and inner weights separately
     # --------------------------------------------------------------------------
     # Outer weight jacobian (jj in (1:K-1))
-  
+
     # Special case, only one multinomial weight equal to one
     if (jj == 1 && K == 1){
       return(eta * 0)
@@ -596,11 +596,11 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     ncoef <- length(coefs)
 
     # Need list_of_etaT[[w]] and list_of_theta[[w]]
-    
+
     # Get indexes of inner etas (along lpi) and thetas (along coef vectors)
     eta_idx <- (K-1 + each_eta[w] + 1):(K-1 + each_eta[w+1])
     theta_idx <- (ncoef - ntheta + each_theta[w] + 1):(ncoef - ntheta + each_theta[w+1])
-    
+
     etaT <- eta[,eta_idx]
     theta <- coefs[theta_idx]
 

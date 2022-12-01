@@ -36,8 +36,8 @@ create_windows <- function(df, initial_size, window_size, horizon_size, step_siz
   training_idx[[1]] <- train_start_idx
   testing_idx[[1]] <- test_start_idx
   i <- 2
+  cutoff <- cutoff + step_size
   while ((cutoff+horizon_size) <= N) {
-    cutoff <- cutoff + step_size
     if (type == "expanding") {
       train_idx <- 1:cutoff
       test_idx <- (cutoff + 1):(cutoff + horizon_size)
@@ -49,6 +49,7 @@ create_windows <- function(df, initial_size, window_size, horizon_size, step_siz
     training_idx[[i]] <- train_idx
     testing_idx[[i]] <- test_idx
     i <- i + 1
+    cutoff <- cutoff + step_size
   }
   return(structure(df, "training_windows" = training_idx, "testing_windows" = testing_idx))
 }
@@ -81,6 +82,7 @@ create_windower <- function(initial_size, horizon_size, window_size = NULL, step
   }
   return(windower)
 }
+
 
 windowed_dat <- create_windows(dTrain, initial_size = 24*90, window_size = 24*30, horizon_size = 24*30, step_size = 24*30, "expanding")
 

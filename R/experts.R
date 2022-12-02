@@ -63,10 +63,6 @@ create_expert <- function(fit_func, pred_func = NULL, sim_func = NULL, dens_func
 
 # ------------------------------------------------------------------------------
 
-expert = create_expert(fit_func = fit_func)
-expert$model_fit <- expert$fit(expert, data)
-
-
 evaluate_expert <- function(expert, windower, data, type = "predict") {
   list_of_dens <- NULL
   list_of_preds <- NULL
@@ -83,6 +79,7 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
   windowed_dat <- windower(data)
   list_of_preds <- list()
   for (i in 1:length(attr(windowed_dat, "training_windows"))) {
+    cat(paste0(i, "/", length(attr(windowed_dat, "training_windows"))), "\n")
     expert <- expert$fit(expert, windowed_dat[attr(windowed_dat, "training_windows")[[i]],])
     if ("density" %in% type) {
       list_of_dens[[i]] <- expert$density(expert, windowed_dat[attr(windowed_dat, "testing_windows")[[i]],])
@@ -107,6 +104,22 @@ evaluate_stack <- function(stacker, windower1, windower2, data) {
   }
 }
 
+evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densities) {
+  if (nrow(list_of_densities[[1]]) != nrow(stack_data)) {
+    stop("Stack data must correspond to given densities, found mismatch in nrow.")
+  }
+
+  stacking_dat <- windower(stack_data)
+  out_list <- list()
+  for (i in 1:length(attr(stacking_dat, "training_windows"))) {
+    cat(paste0(i, "/", length(attr(stacking_dat, "training_windows"))), "\n")
+    stack_dat <-  stacking_dat[attr(stacking_dat, "training_windows")[[i]],]
+    clod <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "training_windows")[[i]],])
+    stacker <- stacker$fit_stack(stacker, formula, stack_dat, clod)
+    out_list[[i]] <- stacker$predict(stacker, stack_dat, list_of_densities, "weights")
+  }
+  return(out_list)
+}
 
 
 create_stacker <- function(experts, inners) {
@@ -114,7 +127,7 @@ create_stacker <- function(experts, inners) {
     stop("Experts must be supplied in a list.")
   }
 
-  if (!is.list(experts[[0]])) {
+  if (!is.list(experts[[1]])) {
     warning("Taking experts in order and assigning based on inner numbers.")
   }
 
@@ -143,22 +156,25 @@ create_stacker <- function(experts, inners) {
   }
 
   # fit stack using densities from fitted experts
-  stacker$fit_stack <- function(stacker,formula_list, stack) {
-    if (!(stacker$experts_fitted)) {
-      stop("fit_stack requires experts to be fitted prior")
+  stacker$fit_stack <- function(stacker,formula_list, stack, list_of_densities = NULL) {
+    if (!(stacker$experts_fitted) & is.null(list_of_densities)) {
+      stop("fit_stack requires experts to be fitted prior or densities to be directly supplied.")
     }
 
-    list_of_densities <- list()
-    experts <- stacker$experts
-    list_of_densities <- list()
-    for (i in 1:K) {
-      dens <- matrix(nrow = nrow(stack), ncol = length(experts[[i]]))
-      for (j in 1:length(experts[[i]][[j]])) {
-        dens[,j] <- experts[[i]][[j]]$density(experts[[i]][[j]], stack)
+    if (is.null(list_of_densities)) {
+      list_of_densities <- list()
+      experts <- stacker$experts
+      for (i in 1:K) {
+        dens <- matrix(nrow = nrow(stack), ncol = length(experts[[i]]))
+        for (j in 1:length(experts[[i]][[j]])) {
+          dens[,j] <- experts[[i]][[j]]$density(experts[[i]][[j]], stack)
+        }
+        list_of_densities[[i]] <- dens
       }
-      list_of_densities[[i]] <- dens
+      stacker$list_of_densities <- list_of_densities
+    } else {
+      stacker$list_of_densities <- list_of_densities
     }
-    stacker$list_of_densities <- list_of_densities
 
     pre_fam <- NestedStack(list_of_densities, inners, RidgePen = 1e-05)
     fitted_stack <- gam(formula_list, data = stack, family = pre_fam)

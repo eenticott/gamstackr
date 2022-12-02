@@ -71,8 +71,6 @@ create_expert <- function(fit_func, pred_func = NULL, sim_func = NULL, dens_func
   return(structure(out_list, class = "expert"))
 }
 
-
-
 fit <- function(x, ...) {
   UseMethod("fit", x)
 }
@@ -84,67 +82,12 @@ fit.expert <- function(expert, data) {
 }
 
 
-expert = create_expert(fit_func = fit_func)
-
-fit(expert, data = NULL)
-
-
-expert$model_fit <- expert$fit(data)
-
-
-
-evaluate <- function(expert, windower, data) {
-  windowed_dat <- windower(data)
-  for (i in 1:length(attr(windowed_dat, "training_windows"))) {
-    expert$fit(windowed_dat[attr(windowed_dat, "training_windows")[[i]],])
-    expert$predict(windowed_dat[attr(windowed_dat, "testing_windows")[[i]],])
-  }
-}
-
-inners[[1]] 1:3
-inners[[2]] 4:5
-
-# optional inner_idx <- list(c(1,4,5), c(2,3))
-
-# experts taken in order and assigned
-
-windower <- expanding
-sliding
-proportion
-
-starts_fitted
-
-
-evaluate(stack, window) {
-
-}
-
-
-
-create_stack(experts, inners) {
-
-  stack <- list()
-  # How should we define experts, as in dividing into correct outer/inner structure. Need an easy way to define
-  if (length(experts) != length(inners)) {
-    stop("Number of experts should match number of inner functions.")
-  }
-  for (ex in experts) {
-    expert$fit(train)
-    expert$predict(stack)
-  }
-}
 
 
 
 
-stack$fit(train, stack)
-stack$predict(newdata, type = "predictions") {
-  predict(experts)
-  predict(stack, experts)
-}
 
 
-create_
 
 
 

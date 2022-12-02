@@ -722,7 +722,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       multiplied_weights <- do.call("cbind", multiplied_weights)
     }
 
-    return(list(fit = outer_then_inner))
+    return(list("fit" = outer_then_inner, "multi" = multiplied_weights))
   }
 
   structure(list(family = "NestedStack",ll = ll,nlp = K - 1 + neta,

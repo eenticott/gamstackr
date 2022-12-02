@@ -83,11 +83,6 @@ create_windower <- function(initial_size, horizon_size, window_size = NULL, step
   return(windower)
 }
 
-
-windowed_dat <- create_windows(dTrain, initial_size = 24*90, window_size = 24*30, horizon_size = 24*30, step_size = 24*30, "expanding")
-
-plot_windows(windowed_dat)
-
 split_by <- function(df, fact_split) {
    N <- length(unique(df[,fact_split]))
    out_df <- list()

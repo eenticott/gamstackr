@@ -40,7 +40,7 @@ fit_func3 <- function(data) {
 
 dens_func <- function(fitted_model, data) {
   mu <- predict(fitted_model, data)
-  sd <- sqrt(fitted_model$sigma2)
+  sd <- sqrt(fitted_model$sig2)
   dnorm(data[,"SpotPrice"], mu, sd, log = TRUE)
 }
 
@@ -53,13 +53,14 @@ ex3 <- create_expert(fit_func = fit_func3, dens_func = dens_func)
 bind_df <- function(list_of_lists, type) {
   do.call("cbind", lapply(list_of_lists, function(x) do.call("c", x[[type]])))
 }
-bind_df(out, "dens")
 
 windower <- create_windower(52*7, horizon_size = 7, window_size = 52*7, step_size = 7, type = "sliding")
 
 out <- evaluate_expert(list(ex1, ex2, ex3), windower, price_data_H0, type = c("density", "predict"))
-out
-stacker <- create_stack(list(ex1, ex2, ex3), inners = list(ordinal(3)))
+
+bind_df(out, "dens")
+
+stacker <- create_stacker(list(ex1, ex2, ex3), inners = list(ordinal(3)))
 
 stack_out <- evaluate_stack(stacker, data = cbind(stack, past_performance), windower = windower)
 

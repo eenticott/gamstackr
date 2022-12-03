@@ -13,7 +13,6 @@ library(zoo)
 my_data <- read.csv(file = "Data/central_gas_price_1005_R.csv")
 
 dat_save <- my_data %>% filter(Hour == 0)
-# Lag2 demand, nuclear availability, spot price d-2 and d-7, toy,
 
 dat_h <- my_data %>% filter(Hour == 0)
 dat_h <- dat_h %>% mutate(Date = as_datetime(ymd(Date)))

@@ -174,7 +174,7 @@ get_derivatives <- function(list_of_beta,
 #' inners = list(ordinal(3), id(1, 100))
 #' P = list(matrix(rnorm(300), nrow = 100), matrix(rnorm(100), nrow = 100))
 #' NestedStack(P, inners)
-NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
+NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
   ### mgcv family for nested stacking
   ### inner_funcs is list of lists of inner weight functions
 
@@ -188,7 +188,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   n_each_eta <- lapply(inner_funcs, function(x) attr(x, "neta"))
   n_each_theta <- lapply(inner_funcs, function(x) attr(x, "ntheta"))
   n_each_weight <- lapply(inner_funcs, function(x) attr(x, "num_weights"))
-  logP <- lapply(P, log)
+  P <- lapply(logP, exp)
 
   # Prepare link functions
   link <- lapply(1:(K - 1 + neta), function(x) "identity")
@@ -239,6 +239,11 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
   assign(".coef", NULL, envir = environment())
   getCoef <- function() get(".coef")
   putCoef <- function(.x) assign(".coef", .x, envir = environment(sys.function()))
+
+  # MWF
+  assign(".MWF", FALSE, envir = environment())
+  getMWF <- function() get(".MWF")
+  putMWF <- function(.x) assign(".MWF", .x, envir = environment(sys.function()))
 
   # copied residuals from fam_stackProb
   residuals <- function(object, type=c("deviance","pearson","response")) {
@@ -604,7 +609,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     etaT <- eta[,eta_idx]
     theta <- coefs[theta_idx]
 
-    derivs <- eval_deriv(inners[[w]], etaT, theta, deriv = 1)
+    derivs <- .internals()[["eval_deriv"]](inners[[w]], etaT, theta, deriv = 1)
 
     if (is.list(derivs$f_eta_eval)) {
       eta_deriv <- matrix(nrow = nrow(eta),ncol = length(derivs$f_eta_eval))
@@ -653,7 +658,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
       }
     }
 
-    list_of_eta <- get_list_of_eta(list_of_X_eta, list_of_beta)
+    list_of_eta <-.internals()[["get_list_of_eta"]](list_of_X_eta, list_of_beta)
     list_of_betaT <- list()
     list_of_X_etaT <- list()
     ####
@@ -679,7 +684,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
         }
     }
 
-    list_of_etaT <- get_list_of_eta(list_of_X_etaT, list_of_betaT)
+    list_of_etaT <- .internals()[["get_list_of_eta"]](list_of_X_etaT, list_of_betaT)
     #####
     # get theta parameters
     p <- lapply(lpi, function(lpi_ii) length(lpi_ii))
@@ -698,7 +703,7 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
 
     inner_weights <- list()
     for (k in 1:length(list_of_inner_functions)) {
-      inner_weights[[k]] <- eval_deriv(list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]], deriv = 0)
+      inner_weights[[k]] <- .internals()[["eval_deriv"]](list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]], deriv = 0)
     }
 
     outer_weights <- eta_to_alpha(list_of_eta)
@@ -717,12 +722,16 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
     all_inner_weights <- do.call("cbind", inner_weights)
 
     outer_then_inner <- cbind(outer_weights, all_inner_weights)
-    if (!is.null(outer_weights)) {
-      multiplied_weights <- list_times_list(matrix_to_lov(outer_weights), inner_weights)
-      multiplied_weights <- do.call("cbind", multiplied_weights)
+
+    multiplied_weights <- list_times_list(matrix_to_lov(outer_weights), inner_weights)
+    multiplied_weights <- do.call("cbind", multiplied_weights)
+
+    MWF <- family$getMWF()
+    if (MWF) {
+      return(list("fit" = multiplied_weights))
     }
 
-    return(list("fit" = outer_then_inner, "multi" = multiplied_weights))
+    return(list("fit" = outer_then_inner))
   }
 
   structure(list(family = "NestedStack",ll = ll,nlp = K - 1 + neta,
@@ -738,6 +747,8 @@ NestedStack <- function(P, inner_funcs, RidgePen = 1e-5) {
                  getNparams = getNparams,
                  getCoef = getCoef,
                  putCoef = putCoef,
+                 getMWF = getMWF,
+                 putMWF = putMWF,
                  n.theta = n.theta,
                  n_each_theta = n_each_theta,
                  n_each_eta = n_each_eta,

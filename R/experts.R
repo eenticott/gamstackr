@@ -6,14 +6,14 @@ fit_func <- function(data) {
 sim_func <- function(fitted_model, data) {
   # returns simulated response from given data
   mu <- predict(fitted_model, newdata = data)
-  sd <- sqrt(as.numeric(crossprod(fitted_model$residuals)/fitted_models$df.residuals))
+  sd <- sqrt(as.numeric(crossprod(fitted_model$residuals)/fitted_model$df.residuals))
   rnorm(n = nrow(data), mu, sd = sd)
 }
 
 dens_func <- function(fitted_model, data) {
   # returns likelihood of each data point given model
   mu <- predict(fitted_model, newdata = data)
-  sd <- sqrt(as.numeric(crossprod(fitted_model$residuals)/fitted_models$df.residuals))
+  sd <- sqrt(as.numeric(crossprod(fitted_model$residuals)/fitted_model$df.residuals))
   dnorm(n = nrow(data), mu, sd = sd, log = TRUE)
 }
 
@@ -72,6 +72,7 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
     i <- 1
     for (ex in expert) {
       out_list[[i]] <- evaluate_expert(ex, windower, data, type)
+      cat(paste("----- Expert", i, "completed -----", "\n"))
       i <- i + 1
     }
     return(out_list)
@@ -91,19 +92,6 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
   return(list("preds" = list_of_preds, "dens" = list_of_dens))
 }
 
-# force horizon_size = step_size for density evaluation to ensure we can bind properly
-
-evaluate_stack <- function(stacker, windower1, windower2, data) {
-  training_dat <- windower1(data)
-  stacking_dat <- windower2(data)
-  list_of_preds <- list()
-  for (i in 1:length(attr(windowed_dat, "training_windows"))) {
-    stacker <- stacker$fit_experts(stacker, training_dat[attr(training_dat, "training_windows")[[i]],])
-    stacker <- stacker$fit_stack(stacker, stacking_dat[attr(stacking_dat, "training_windows")[[i]],])
-    list_of_preds[[i]] <- stacker$predict(stacker, stacking_dat[attr(stacking_dat, "testing_windows")[[i]],])
-  }
-}
-
 evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densities) {
   if (nrow(list_of_densities[[1]]) != nrow(stack_data)) {
     stop("Stack data must correspond to given densities, found mismatch in nrow.")
@@ -114,9 +102,11 @@ evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densi
   for (i in 1:length(attr(stacking_dat, "training_windows"))) {
     cat(paste0(i, "/", length(attr(stacking_dat, "training_windows"))), "\n")
     stack_dat <-  stacking_dat[attr(stacking_dat, "training_windows")[[i]],]
+    test_dat <- stacking_dat[attr(stacking_dat, "testing_windows")[[i]],]
     clod <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "training_windows")[[i]],])
+    clotd <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "testing_windows")[[i]],])
     stacker <- stacker$fit_stack(stacker, formula, stack_dat, clod)
-    out_list[[i]] <- stacker$predict(stacker, stack_dat, list_of_densities, "weights")
+    out_list[[i]] <- stacker$predict(stacker, test_dat, clotd, "weights")
   }
   return(out_list)
 }
@@ -166,7 +156,7 @@ create_stacker <- function(experts, inners) {
       experts <- stacker$experts
       for (i in 1:K) {
         dens <- matrix(nrow = nrow(stack), ncol = length(experts[[i]]))
-        for (j in 1:length(experts[[i]][[j]])) {
+        for (j in 1:length(experts[[i]])) {
           dens[,j] <- experts[[i]][[j]]$density(experts[[i]][[j]], stack)
         }
         list_of_densities[[i]] <- dens
@@ -182,17 +172,26 @@ create_stacker <- function(experts, inners) {
     return(stacker)
   }
 
-  stacker$predict <- function(stacker, stack_data, list_of_densities, type) {
+  stacker$predict <- function(stacker, newdata, list_of_densities, type) {
+    stacker$fitted_stack$family$putMWF(TRUE)
     if (type == "weights") {
-      predict(stacker$fitted_stack, newdata, type = "response")
+      out <- predict(stacker$fitted_stack, newdata, type = "response")
+      stacker$fitted_stack$family$putMWF(FALSE)
+      return(out)
     }
     if (type == "density") {
-      rowSums(predict(stacker$fitted_stack, newdata, type = "response") * do.call("cbind", list_of_densities))
+      out <- rowSums(predict(stacker$fitted_stack, newdata, type = "response") * do.call("cbind", list_of_densities))
+      stacker$fitted_stack$family$putMWF(FALSE)
+      return(out)
     }
   }
+
+  return(stacker)
 }
 
-
+bind_output <- function(list_of_lists, type) {
+  do.call("cbind", lapply(list_of_lists, function(x) do.call("c", x[[type]])))
+}
 
 
 

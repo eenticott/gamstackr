@@ -97,5 +97,8 @@ matrix_to_lov <- function(X) {
   internals <- list()
   internals[["get_list_of_eta"]] <- get_list_of_eta
   internals[["eval_deriv"]] <- eval_deriv
+  internals[["eta_to_alpha"]] <- eta_to_alpha
+  internals[["list_times_list"]] <- list_times_list
+  internals[["matrix_to_lov"]] <- matrix_to_lov
   return(internals)
 }

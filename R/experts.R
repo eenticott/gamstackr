@@ -101,10 +101,10 @@ evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densi
   out_list <- list()
   for (i in 1:length(attr(stacking_dat, "training_windows"))) {
     cat(paste0(i, "/", length(attr(stacking_dat, "training_windows"))), "\n")
-    stack_dat <-  stacking_dat[attr(stacking_dat, "training_windows")[[i]],]
-    test_dat <- stacking_dat[attr(stacking_dat, "testing_windows")[[i]],]
-    clod <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "training_windows")[[i]],])
-    clotd <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "testing_windows")[[i]],])
+    stack_dat <-  stacking_dat[attr(stacking_dat, "training_windows")[[i]],,drop = FALSE]
+    test_dat <- stacking_dat[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE]
+    clod <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "training_windows")[[i]],, drop = FALSE])
+    clotd <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE])
     stacker <- stacker$fit_stack(stacker, formula, stack_dat, clod)
     out_list[[i]] <- stacker$predict(stacker, test_dat, clotd, "weights")
   }

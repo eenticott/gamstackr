@@ -135,6 +135,8 @@ ll_eta2 <- function(alpha, list_of_eta, list_of_densities, list_of_f_eval, list_
   all_d <- c(ds)
   out_mat <- matrix(nrow = N * K, ncol = (K-1))
   for (k in 2:K) {
+    print(length(rep(alpha[,k], K)))
+    print(length(all_ll_eta_vector))
     out_mat[,k-1] <- (rep(list_of_l_eta[[k-1]], K) * (id_mat[,k] - all_d)) - (rep(alpha[,k], K)*all_ll_eta_vector)
   }
 

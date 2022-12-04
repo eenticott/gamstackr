@@ -444,7 +444,7 @@ id <- function() {
   get_derivs <- function(eta, theta, deriv) {
     store <- list()
     if (deriv >= 0) {
-      store$f_eval <- matrix(1, nrow = 1, ncol = 1)
+      store$f_eval <- matrix(1)
       if (deriv >= 1) {
         zero_mat <- NULL
 

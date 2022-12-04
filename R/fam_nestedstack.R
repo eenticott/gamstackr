@@ -369,7 +369,7 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
       for (k in 1:length(inners)) {
         f_eval <- .internals()[["eval_deriv"]](inners[[k]], list_of_etaT[[k]], list_of_theta[[k]],deriv = 0)$f_eval
         p <- list_of_densities[[k]]
-        if(nrow(p) != nrow(f_eval)) {
+        if(nrow(f_eval) != nrow(p)) {
           f_eval = matrix(1, nrow = nrow(p))
         }
         init_dens[,k] <- rowSums(f_eval * p)

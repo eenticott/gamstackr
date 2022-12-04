@@ -1,21 +1,21 @@
 # Example setup ----------------------------------------------------------------
-fit_func <- function(data) {
-  lm(y ~ x1 + x2, data = data)
-}
-
-sim_func <- function(fitted_model, data) {
-  # returns simulated response from given data
-  mu <- predict(fitted_model, newdata = data)
-  sd <- sqrt(as.numeric(crossprod(fitted_model$residuals)/fitted_model$df.residuals))
-  rnorm(n = nrow(data), mu, sd = sd)
-}
-
-dens_func <- function(fitted_model, data) {
-  # returns likelihood of each data point given model
-  mu <- predict(fitted_model, newdata = data)
-  sd <- sqrt(as.numeric(crossprod(fitted_model$residuals)/fitted_model$df.residuals))
-  dnorm(n = nrow(data), mu, sd = sd, log = TRUE)
-}
+# fit_func <- function(data) {
+#   lm(y ~ x1 + x2, data = data)
+# }
+#
+# sim_func <- function(fitted_model, data) {
+#   # returns simulated response from given data
+#   mu <- predict(fitted_model, newdata = data)
+#   sd <- sqrt(as.numeric(crossprod(fitted_model$residuals)/fitted_model$df.residuals))
+#   rnorm(n = nrow(data), mu, sd = sd)
+# }
+#
+# dens_func <- function(fitted_model, data) {
+#   # returns likelihood of each data point given model
+#   mu <- predict(fitted_model, newdata = data)
+#   sd <- sqrt(as.numeric(crossprod(fitted_model$residuals)/fitted_model$df.residuals))
+#   dnorm(n = nrow(data), mu, sd = sd, log = TRUE)
+# }
 
 # ------------------------------------------------------------------------------
 create_expert <- function(fit_func, pred_func = NULL, sim_func = NULL, dens_func = NULL) {

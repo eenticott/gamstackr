@@ -127,7 +127,7 @@ ll_theta <- function(ll_alpha, list_of_f_theta_eval, list_of_densities) {
 ll_eta2 <- function(alpha, list_of_eta, list_of_densities, list_of_f_eval, list_of_l_eta, list_of_X_eta) {
   K = ncol(alpha)
   N = nrow(list_of_densities[[1]])
-  id_mat <- diag(K) %x% rep(1, N)
+  id_mat <- diag(K-1) %x% rep(1, N)
   all_ll_eta_vector <- unlist(list_of_l_eta)
   # SHOULD RENAME d, VERY CONFUSING GIVEN MY NOTATION IN WRITTEN DERIVATIVES
   ds <- d(1:K, list_of_eta, list_of_densities, list_of_f_eval)
@@ -135,7 +135,7 @@ ll_eta2 <- function(alpha, list_of_eta, list_of_densities, list_of_f_eval, list_
   all_d <- c(ds)
   out_mat <- matrix(nrow = N * K, ncol = (K-1))
   for (k in 2:K) {
-    out_mat[,k-1] <- (rep(list_of_l_eta[[k-1]], K-1) * (id_mat[,k] - all_d)) - (rep(alpha[,k], K)*all_ll_eta_vector)
+    out_mat[,k-1] <- (rep(list_of_l_eta[[k-1]], K-1) * (id_mat[,k] - all_d)) - (rep(alpha[,k], K-1)*all_ll_eta_vector)
   }
 
   out_mat <- t(out_mat)

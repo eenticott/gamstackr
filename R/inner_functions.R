@@ -434,7 +434,7 @@ MVN_weights <- function(x, dim_num) {
 #'
 #' @examples
 #' id(3, 1000)
-id <- function() {
+id <- function(N) {
   # Suppose we have N data points
   # n_k inner functions
   # inner functions f_j depend on:
@@ -444,7 +444,7 @@ id <- function() {
   get_derivs <- function(eta, theta, deriv) {
     store <- list()
     if (deriv >= 0) {
-      store$f_eval <- matrix(1)
+      store$f_eval <- matrix(1, nrow = N)
       if (deriv >= 1) {
         zero_mat <- NULL
 

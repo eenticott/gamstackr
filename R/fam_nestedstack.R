@@ -1,6 +1,5 @@
 # TODO: Make more efficient by saving X_eta, X_etaT in preinit
 # TODO: Add function that takes outer_then_inner and gives multiplied_weights
-
 #' get_derivatives
 #'
 #' @param list_of_beta
@@ -154,7 +153,7 @@ get_derivatives <- function(list_of_beta,
     hessian <- rbind(
       cbind(eta2, beta_betaT_derivs, beta_theta_derivs),
       cbind(t_alt(beta_betaT_derivs), betaT2_derivs, betaT_theta_derivs),
-      cbind(t_alt(beta_theta_derivs), t(betaT_theta_derivs), theta2_derivs)
+      cbind(t_alt(beta_theta_derivs), t_alt(betaT_theta_derivs), theta2_derivs)
     )
     hessian <- matrix(as.numeric(hessian), nrow = nrow(hessian))
   }

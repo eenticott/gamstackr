@@ -79,6 +79,7 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
   }
   windowed_dat <- windower(data)
   list_of_preds <- list()
+  model <- NULL
   for (i in 1:length(attr(windowed_dat, "training_windows"))) {
     cat(paste0(i, "/", length(attr(windowed_dat, "training_windows"))), "\n")
     expert <- expert$fit(expert, windowed_dat[attr(windowed_dat, "training_windows")[[i]],])
@@ -88,8 +89,11 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
     if ("predict" %in% type) {
       list_of_preds[[i]] <- expert$predict(expert, windowed_dat[attr(windowed_dat, "testing_windows")[[i]],])
     }
+    if ("model" %in% type) {
+      model <- expert$fitted_model
+    }
   }
-  return(list("preds" = list_of_preds, "dens" = list_of_dens))
+  return(list("preds" = list_of_preds, "dens" = list_of_dens, "model" = model))
 }
 
 evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densities) {

@@ -46,7 +46,6 @@ d <- function(indexes, list_of_eta, list_of_densities, list_of_f_eval) {
   return(out)
 }
 
-
 ll_eta <- function(list_of_f_eval, list_of_eta, list_of_densities, alpha_mat) {
   K = length(list_of_densities)
   ds <- d(1:(K), list_of_eta, list_of_densities, list_of_f_eval)
@@ -127,30 +126,25 @@ ll_theta <- function(ll_alpha, list_of_f_theta_eval, list_of_densities) {
 ll_eta2 <- function(alpha, list_of_eta, list_of_densities, list_of_f_eval, list_of_l_eta, list_of_X_eta) {
   K = ncol(alpha)
   N = nrow(list_of_densities[[1]])
-  id_mat <- diag(K) %x% rep(1, N)
-  all_ll_eta_vector <- unlist(list_of_l_eta)
   # SHOULD RENAME d, VERY CONFUSING GIVEN MY NOTATION IN WRITTEN DERIVATIVES
   ds <- d(1:K, list_of_eta, list_of_densities, list_of_f_eval)
   ds <- ds/rowSums(ds)
-  all_d <- c(ds)
-  out_mat <- matrix(nrow = N * K, ncol = (K-1))
-  for (k in 2:K) {
-    out_mat[,k-1] <- (rep(list_of_l_eta[[k-1]], K-1) * (id_mat[,k] - all_d)) - (rep(alpha[,k], K-1)*all_ll_eta_vector)
-  }
-
-  out_mat <- t(out_mat)
-
-  # Convert to beta derivatives
   out <- list()
   for (i in 2:K) {
     out[[i]] <- list()
     for (j in 2:K) {
-        out[[i]][[j]] <- XtDX(list_of_X_eta[[i-1]], out_mat[i-1,(((j-1)*N)+1):(N*j)], list_of_X_eta[[j-1]])
+      if (i == j) {
+        eta2_deriv <- list_of_l_eta[[i-1]] * (1 - ds[,i]) - (alpha[,i] * list_of_l_eta[[i-1]])
+        out[[i-1]][[j-1]] <- XtDX(list_of_X_eta[[i-1]], eta2_deriv, list_of_X_eta[[j-1]])
+      } else {
+        eta2_deriv <- (list_of_l_eta[[i-1]] * (-ds[,j])) - (alpha[,i] * list_of_l_eta[[j-1]])
+        out[[i-1]][[j-1]] <- XtDX(list_of_X_eta[[i-1]], eta2_deriv, list_of_X_eta[[j-1]])
+      }
     }
     out[[i]] <- do.call("cbind", out[[i]])
   }
-  out <- do.call("rbind", out)
 
+  out <- do.call("rbind", out)
   return(out)
 }
 

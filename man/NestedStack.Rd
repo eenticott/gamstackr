@@ -4,14 +4,14 @@
 \alias{NestedStack}
 \title{mgcv family for nested stacking}
 \usage{
-NestedStack(P, inner_funcs, RidgePen = 1e-05)
+NestedStack(logP, inner_funcs, RidgePen = 1e-05)
 }
 \arguments{
-\item{P}{List of Matrices of model densities}
-
 \item{inner_funcs}{List of inner function objects}
 
 \item{RidgePen}{Positive numeric the scalar applied to the ridge penalty in regression}
+
+\item{P}{List of Matrices of model densities}
 }
 \value{
 An initialised mgcv family object

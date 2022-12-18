@@ -31,7 +31,7 @@ add_past_performance <- function(stack_data, dens,  over = c(1, 3, 7)) {
 # Define experts ===============================================================
 fit_func1 <- function(data) {
   data <- tail(data, 14) # take last two weeks
-
+  gam(SpotPrice ~ s(LagMatrix, by = LoadMatrix), data = data)
 }
 
 fit_func2 <- function(data) {
@@ -282,3 +282,26 @@ out_preds <- data.frame(Date = price_data_H[rownames(W), "Date"],
 
 out_exp <- data.frame(predictions[rownames(W),])
 colnames(out_exp) <- c("Ex1", "Ex2", "Ex3")
+
+# ##############################################################################
+# Fit experts
+ex_windower <- create_windower(52*7, horizon_size = 7, window_size = 52*7, step_size = 7, type = "sliding")
+out <- evaluate_expert(list(ex1, ex2, ex3, ex4, ex5, ex6, ex7), ex_windower, price_data_H, type = c("density", "predict", "model"))
+dens <- bind_output(out, "dens")
+list_of_densities <- list(dens[1:3], dens[4,,drop = FALSE], dens[5:7])
+
+preds <- bind_output(out, "preds")
+
+# Create stack data
+stack_data <- price_data_H[rownames(preds),]
+stack_data <- add_past_performance(stack_data, dens)
+
+# get rid of NA
+stack_data <- tail(stack_data, -7)
+list_of_densities <- lapply(list_of_densities, function(x) tail(x, -7))
+
+
+stack_windower <- create_windower(52*7, horizon_size = 7, window_size = 52*7, step_size = 7, type = "expanding")
+stacker <- create_stacker(list(list(ex5, ex6, ex7)), inners = list(ordinal(3)))
+sout <- evaluate_stack(stacker, list(SpotPrice ~ s(PP2.1) + s(PP3.1) + s(PP2.7) + s(PP3.7)), stack_windower, stack_data, list_of_densities = list_of_densities)
+

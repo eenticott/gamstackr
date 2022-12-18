@@ -1,5 +1,8 @@
 # Implements derivatives given the inner function derivatives.
-rowSums <- matrixStats::rowSums2
+#rowSums <- matrixStats::rowSums2
+library(Rcpp)
+sourceCpp("CPP/matsums.cpp")
+rowSums <- Cpp_rowSums
 # h is a commonly seen function in the derivatives
 h <- function(dens, f_deriv, ll_alpha) {
   if (is.list(f_deriv)) {

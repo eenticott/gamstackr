@@ -20,7 +20,7 @@ An initialised mgcv family object
 mgcv family for nested stacking
 }
 \examples{
-inners = list(ordinal(3), id(1, 100))
+inners = list(ordinal(3), id())
 P = list(matrix(rnorm(300), nrow = 100), matrix(rnorm(100), nrow = 100))
 NestedStack(P, inners)
 }

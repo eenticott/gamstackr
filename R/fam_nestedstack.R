@@ -1,20 +1,6 @@
 # TODO: Make more efficient by saving X_eta, X_etaT in preinit
 # TODO: Add function that takes outer_then_inner and gives multiplied_weights
-#' get_derivatives
-#'
-#' @param list_of_beta
-#' @param list_of_betaT
-#' @param list_of_theta
-#' @param list_of_X_eta
-#' @param list_of_X_etaT
-#' @param list_of_inner_functions
-#' @param list_of_densities
-#' @param derivs
-#'
-#' @return
-#' @export
-#'
-#' @examples
+
 get_derivatives <- function(list_of_beta,
                             list_of_betaT,
                             list_of_theta,
@@ -170,7 +156,7 @@ get_derivatives <- function(list_of_beta,
 #' @export
 #'
 #' @examples
-#' inners = list(ordinal(3), id(1, 100))
+#' inners = list(ordinal(3), id())
 #' P = list(matrix(rnorm(300), nrow = 100), matrix(rnorm(100), nrow = 100))
 #' NestedStack(P, inners)
 NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {

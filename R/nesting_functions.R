@@ -1,17 +1,15 @@
 # Implements derivatives given the inner function derivatives.
 #rowSums <- matrixStats::rowSums2
-library(Rcpp)
-sourceCpp("CPP/matsums.cpp")
-rowSums <- Cpp_rowSums
+rowsums <- Cpp_rowSums
 # h is a commonly seen function in the derivatives
 h <- function(dens, f_deriv, ll_alpha) {
   if (is.list(f_deriv)) {
     out <- list()
     for (i in 1:length(f_deriv)) {
-      out[[i]] <- rowSums(dens * f_deriv[[i]]) * ll_alpha
+      out[[i]] <- rowsums(dens * f_deriv[[i]]) * ll_alpha
     }
   } else {
-    out <-  rowSums(dens * f_deriv) * ll_alpha
+    out <-  rowsums(dens * f_deriv) * ll_alpha
   }
   return(out)
 }
@@ -30,9 +28,9 @@ ll <- function(list_of_f_eval, alpha_matrix, list_of_densities) {
     alpha <- alpha_matrix[, k]
     p <- list_of_densities[[k]]
     f_eval <- list_of_f_eval[[k]]
-    out[, k] <- alpha * rowSums(f_eval * p)
+    out[, k] <- alpha * rowsums(f_eval * p)
   }
-  return(log(rowSums(out)))
+  return(log(rowsums(out)))
 }
 
 # First derivatives
@@ -44,7 +42,7 @@ d <- function(indexes, list_of_eta, list_of_densities, list_of_f_eval) {
   out <- matrix(nrow = N, ncol = K)
   list_of_eta2 <- c(list(matrix(0, nrow = N)), list_of_eta)
   for (i in indexes) {
-    out[,i] = exp(list_of_eta2[[i]] + log(rowSums(list_of_densities[[i]] * list_of_f_eval[[i]])))
+    out[,i] = exp(list_of_eta2[[i]] + log(rowsums(list_of_densities[[i]] * list_of_f_eval[[i]])))
   }
   return(out)
 }
@@ -52,7 +50,7 @@ d <- function(indexes, list_of_eta, list_of_densities, list_of_f_eval) {
 ll_eta <- function(list_of_f_eval, list_of_eta, list_of_densities, alpha_mat) {
   K = length(list_of_densities)
   ds <- d(1:(K), list_of_eta, list_of_densities, list_of_f_eval)
-  out <- (ds/rowSums(ds) - alpha_mat/rowSums(alpha_mat))[,-1, drop = FALSE]
+  out <- (ds/rowsums(ds) - alpha_mat/rowsums(alpha_mat))[,-1, drop = FALSE]
   return(lapply(seq_len(ncol(out)), function(i) out[,i]))
 }
 
@@ -131,7 +129,7 @@ ll_eta2 <- function(alpha, list_of_eta, list_of_densities, list_of_f_eval, list_
   N = nrow(list_of_densities[[1]])
   # SHOULD RENAME d, VERY CONFUSING GIVEN MY NOTATION IN WRITTEN DERIVATIVES
   ds <- d(1:K, list_of_eta, list_of_densities, list_of_f_eval)
-  ds <- ds/rowSums(ds)
+  ds <- ds/rowsums(ds)
   out <- list()
   for (i in 2:K) {
     out[[i]] <- list()

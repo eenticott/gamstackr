@@ -1,5 +1,5 @@
 # Functions that can be used for internal model weights and derivatives
-rowSums <- matrixStats::rowSums2
+rowsums <- Cpp_rowSums
 
 #' Matrix of max(i,j) where i,j are matrix coords
 #'
@@ -269,11 +269,11 @@ MVN_weights <- function(x, dim_num) {
                                         deriv = 0)$d0
     }
 
-    log_dens <- matrix(rowSums(dens_matrix), ncol = n_k)
+    log_dens <- matrix(rowsums(dens_matrix), ncol = n_k)
     shift_mat <- log_dens - matrixStats::rowMaxs(log_dens)
 
     store <- list()
-    store$f_eval <- exp(shift_mat) / rowSums(exp(shift_mat))
+    store$f_eval <- exp(shift_mat) / rowsums(exp(shift_mat))
 
     if (deriv >= 1) {
       dens_list <- list()
@@ -294,8 +294,8 @@ MVN_weights <- function(x, dim_num) {
         l1 <- matrix(detas[[i]], ncol = n_k)
         l2 <- matrix(dtaus[[i]], ncol = n_k)
 
-        f_eta_out[[i]] <- store$f_eval * (l1 - (rowSums(l1 * exp(shift_mat))) / rowSums(exp(shift_mat)))
-        f_tau_out[[i]] <- store$f_eval * (l2 - (rowSums(l2 * exp(shift_mat))) / rowSums(exp(shift_mat)))
+        f_eta_out[[i]] <- store$f_eval * (l1 - (rowsums(l1 * exp(shift_mat))) / rowsums(exp(shift_mat)))
+        f_tau_out[[i]] <- store$f_eval * (l2 - (rowsums(l2 * exp(shift_mat))) / rowsums(exp(shift_mat)))
       }
       # remember to delete eval_dens from func defs
       store$f_eta_eval <- f_eta_out
@@ -318,10 +318,10 @@ MVN_weights <- function(x, dim_num) {
               d2 <- dalpha1 * dbeta1
             }
             p1 <- d2 * store$f_eval
-            p2 <- - rowSums(dbeta1 * exp(shift_mat)) * store$f_eval * dalpha1 / rowSums(exp(shift_mat))
-            p3 <- - (rowSums(d2 * exp(shift_mat)) * store$f_eval) / rowSums(exp(shift_mat))
-            p35 <- - rowSums(dalpha1 * exp(shift_mat)) * store$f_eval * dbeta1 / rowSums(exp(shift_mat))
-            p4 <- rowSums(dbeta1 * exp(shift_mat)) * rowSums(dalpha1 * exp(shift_mat)) * 2 * store$f_eval / rowSums(exp(shift_mat))^2
+            p2 <- - rowsums(dbeta1 * exp(shift_mat)) * store$f_eval * dalpha1 / rowsums(exp(shift_mat))
+            p3 <- - (rowsums(d2 * exp(shift_mat)) * store$f_eval) / rowsums(exp(shift_mat))
+            p35 <- - rowsums(dalpha1 * exp(shift_mat)) * store$f_eval * dbeta1 / rowsums(exp(shift_mat))
+            p4 <- rowsums(dbeta1 * exp(shift_mat)) * rowsums(dalpha1 * exp(shift_mat)) * 2 * store$f_eval / rowsums(exp(shift_mat))^2
             out[[alpha]][[beta]] <- p1 + p2 + p3 + p4 + p35
           }
         }
@@ -342,10 +342,10 @@ MVN_weights <- function(x, dim_num) {
             }
 
             p1 <- d2 * store$f_eval
-            p2 <- - rowSums(dbeta1 * exp(shift_mat)) * store$f_eval * dalpha1 / rowSums(exp(shift_mat))
-            p3 <- - (rowSums(d2 * exp(shift_mat)) * store$f_eval) / rowSums(exp(shift_mat))
-            p35 <- - rowSums(dalpha1 * exp(shift_mat)) * store$f_eval * dbeta1 / rowSums(exp(shift_mat))
-            p4 <- rowSums(dbeta1 * exp(shift_mat)) * rowSums(dalpha1 * exp(shift_mat)) * 2 * store$f_eval / rowSums(exp(shift_mat))^2
+            p2 <- - rowsums(dbeta1 * exp(shift_mat)) * store$f_eval * dalpha1 / rowsums(exp(shift_mat))
+            p3 <- - (rowsums(d2 * exp(shift_mat)) * store$f_eval) / rowsums(exp(shift_mat))
+            p35 <- - rowsums(dalpha1 * exp(shift_mat)) * store$f_eval * dbeta1 / rowsums(exp(shift_mat))
+            p4 <- rowsums(dbeta1 * exp(shift_mat)) * rowsums(dalpha1 * exp(shift_mat)) * 2 * store$f_eval / rowsums(exp(shift_mat))^2
             out[[alpha]][[beta]] <- (p1 + p2 + p3 + p4 + p35) * tau[beta]
           }
         }
@@ -366,10 +366,10 @@ MVN_weights <- function(x, dim_num) {
               d2 <-  dalpha1 * dbeta1
             }
             p1 <- d2 * store$f_eval
-            p2 <- - rowSums(dbeta1 * exp(shift_mat)) * store$f_eval * dalpha1 / rowSums(exp(shift_mat))
-            p3 <- - (rowSums(d2 * exp(shift_mat)) * store$f_eval) / rowSums(exp(shift_mat))
-            p35 <- - rowSums(dalpha1 * exp(shift_mat)) * store$f_eval * dbeta1 / rowSums(exp(shift_mat))
-            p4 <- rowSums(dbeta1 * exp(shift_mat)) * rowSums(dalpha1 * exp(shift_mat)) * 2 * store$f_eval / rowSums(exp(shift_mat))^2
+            p2 <- - rowsums(dbeta1 * exp(shift_mat)) * store$f_eval * dalpha1 / rowsums(exp(shift_mat))
+            p3 <- - (rowsums(d2 * exp(shift_mat)) * store$f_eval) / rowsums(exp(shift_mat))
+            p35 <- - rowsums(dalpha1 * exp(shift_mat)) * store$f_eval * dbeta1 / rowsums(exp(shift_mat))
+            p4 <- rowsums(dbeta1 * exp(shift_mat)) * rowsums(dalpha1 * exp(shift_mat)) * 2 * store$f_eval / rowsums(exp(shift_mat))^2
 
             if (alpha == beta) {
               out[[alpha]][[beta]] = (p1 + p2 + p3 + p4 + p35) * tau[alpha]^2 + tau[alpha] * store$f_tau_eval[[alpha]]
@@ -433,7 +433,7 @@ MVN_weights <- function(x, dim_num) {
 #' @export
 #'
 #' @examples
-#' id(3, 1000)
+#' id()
 id <- function() {
   # Suppose we have N data points
   # n_k inner functions

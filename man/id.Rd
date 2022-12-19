@@ -18,5 +18,5 @@ Object of derivatives for equally weighted models
 Produces equal weights without any dependence on parameters
 }
 \examples{
-id(3, 1000)
+id()
 }

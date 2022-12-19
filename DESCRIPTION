@@ -1,21 +1,23 @@
 Package: gamstackr
+Type: Package
 Title: Tools for stacking probabilistic densities
-Version: 0.0.1
+Version: 1.0
 Authors@R: 
     person("Euan", "Enticott", , "euan.enticott@bristol.ac.uk", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: GPL (>= 3)
+Date: 2022-12-18
+Author: Your Name
+Maintainer: Your Name <your@email.com>
 Encoding: UTF-8
+Description: One paragraph description of what the package does as one or more full sentences.
+License: GPL (>= 3)
+Imports: 
+  Rcpp (>= 1.0.8),
+  Matrix,
+  matrixStats,
+  mgcv,
+  stats
+LinkingTo: Rcpp
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
-Suggests: 
-    testthat (>= 3.0.0)
-Config/testthat/edition: 3
 URL: https://github.com/eenticott/gamstackr
 BugReports: https://github.com/eenticott/gamstackr/issues
-Imports: 
-    Matrix,
-    matrixStats,
-    mgcv,
-    stats,
-    Rcpp

@@ -142,7 +142,7 @@ ll_eta2 <- function(alpha, list_of_eta, list_of_densities, list_of_f_eval, list_
         out[[i-1]][[j-1]] <- XtDX(list_of_X_eta[[i-1]], eta2_deriv, list_of_X_eta[[j-1]])
       }
     }
-    out[[i]] <- do.call("cbind", out[[i]])
+    out[[i-1]] <- do.call("cbind", out[[i-1]])
   }
 
   out <- do.call("rbind", out)

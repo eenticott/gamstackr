@@ -251,8 +251,10 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
     if (!is.null(G$Sl))
       attr(G$Sl, "E") <- cbind(attr(G$Sl, "E"),
                                matrix(0, nbeta, ntheta))
-    G$term.names <- c(G$term.names,paste("my_thetas",1:ntheta,sep="."))
-
+    if (ntheta != 0) {
+      G$term.names <- c(G$term.names, paste("my_thetas", 1:ntheta,
+                                            sep = "."))
+    }
     ## pad out sqrt of balanced penalty matrix to account for extra params
 
     list(X=G$X,term.names=G$term.names,family=G$family, Sl = G$Sl)

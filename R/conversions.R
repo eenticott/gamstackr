@@ -12,7 +12,7 @@ eta_to_alpha <- function(list_of_eta) {
   return(out)
 }
 
-eta_to_beta <- function(list_of_ll_eta, list_of_X_eta) {
+eta_to_beta <- function(list_of_ll_eta, list_of_X_eta, elementwise = FALSE) {
   K <- length(list_of_ll_eta)
   if (K == 0) {
     return(NULL)
@@ -23,9 +23,13 @@ eta_to_beta <- function(list_of_ll_eta, list_of_X_eta) {
       out[i] <- list(NULL)
     } else
     if (is.list(list_of_ll_eta[[i]])) {
-      out[[i]] <- list_by_list(list_of_X_eta[[i]], list_of_ll_eta[[i]])
+      out[[i]] <- list_by_list(list_of_X_eta[[i]], list_of_ll_eta[[i]], elementwise)
     } else {
-      out[[i]] <- t(list_of_X_eta[[i]]) %*% list_of_ll_eta[[i]]
+      if (elementwise) {
+        out[[i]] <- list_of_X_eta[[i]] * list_of_ll_eta[[i]]
+      } else {
+        out[[i]] <- t(list_of_X_eta[[i]]) %*% list_of_ll_eta[[i]]
+      }
     }
   }
   return(out)

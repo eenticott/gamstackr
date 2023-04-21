@@ -8,7 +8,7 @@ get_derivatives <- function(list_of_beta,
                             list_of_X_etaT,
                             list_of_inner_functions,
                             list_of_densities,
-                            derivs = 1) {
+                            derivs = 1, elementwise = FALSE) {
   N <- nrow(list_of_densities[[1]])
   neta <- unlist(lapply(list_of_inner_functions, function(x) attr(x, "neta")))
   list_of_etaT <- get_list_of_eta(list_of_X_etaT, list_of_betaT)
@@ -56,11 +56,14 @@ get_derivatives <- function(list_of_beta,
       ll_eta_deriv <- ll_eta(get_eval("f_eval", eval_store), list_of_eta, list_of_densities, alpha_matrix)
     }
 
-    ll_betaT_deriv <- eta_to_beta(ll_etaT_deriv, list_of_X_etaT)
+    ll_betaT_deriv <- eta_to_beta(ll_etaT_deriv, list_of_X_etaT, elementwise)
 
-    ll_beta_deriv <- eta_to_beta(ll_eta_deriv, list_of_X_eta)
-
-    grad <- c(unlist(ll_beta_deriv), unlist(ll_betaT_deriv), unlist(ll_theta_deriv))
+    ll_beta_deriv <- eta_to_beta(ll_eta_deriv, list_of_X_eta, elementwise)
+    if (elementwise) {
+      grad <- cbind(ll_beta_deriv, ll_betaT_deriv)
+    } else {
+      grad <- c(unlist(ll_beta_deriv), unlist(ll_betaT_deriv), unlist(ll_theta_deriv))
+    }
 
     # Second derivatives
     f_eta2T_eval <- get_eval("f_eta2_eval", eval_store)

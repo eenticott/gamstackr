@@ -130,6 +130,16 @@ LatentStack <- function(logP, q, ridgePen = 1e-5) {
         }
       }
 
+      # b0lik <- function(b0) {
+      #   b0 <- c(0, b0)
+      #   w <- exp(b0)/sum(exp(b0))
+      #   w <- matrix(rep(w, nrow(P)), ncol = K, byrow = TRUE)
+      #   return(sum(log(rowSums(w*P))))
+      # }
+      #
+      # starting_coefs[(sum(augp)+1):(sum(augp)+K-1)] <- optim(starting_coefs[(sum(augp)+1):(sum(augp)+K-1)], b0lik)$par
+
+
       return(starting_coefs)
     }
     if(is.null(start)){
@@ -186,6 +196,9 @@ LatentStack <- function(logP, q, ridgePen = 1e-5) {
     nu1 <- cbind(0, nu)
     nuCen <- nu1 - rowMaxs(nu1)
     a <- exp(nuCen)/rowSums(exp(nuCen))
+    if (!all(dim(a) %in% dim(P))) {
+      browser()
+    }
     l <- sum(log(rowSums(a * P)))
 
     if (deriv >= 1) {

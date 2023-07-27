@@ -6,9 +6,11 @@ h <- function(dens, f_deriv, ll_alpha) {
   if (is.list(f_deriv)) {
     out <- list()
     for (i in 1:length(f_deriv)) {
-      out[[i]] <- rowsums(dens * f_deriv[[i]]) * ll_alpha
+      out[[i]] <- exp(log_rowSums_a_times_b(dens * log(d_deriv[[i]]))) * ll_alpha
+      # out[[i]] <- rowsums(dens * f_deriv[[i]]) * ll_alpha
     }
   } else {
+    out <- exp(log_rowSums_a_times_b(dens, log(f_deriv))) * ll_alpha
     out <-  rowsums(dens * f_deriv) * ll_alpha
   }
   return(out)
@@ -19,37 +21,43 @@ XtDX <- function(X1, D, X2) {
   as.matrix(crossprod(X1, D*X2))
 }
 
+
+log_rowSums_a_times_b <- function(log_a, log_b) {
+  log_c <- log_a + log_b
+  log_c_maxs <- matrixStats::rowMaxs(log_c)
+  log_c_maxs + log(rowSums(exp(log_c - log_c_maxs)))
+}
+
+
 # Likelihood -------------------------------------------------------------------
 ll <- function(list_of_f_eval, alpha_matrix, list_of_densities) {
   N <- nrow(list_of_densities[[1]])
   K <- length(list_of_f_eval)
   out <- matrix(nrow = N, ncol = K)
-  for (k in 1:K) {
-    alpha <- alpha_matrix[, k]
-    p <- list_of_densities[[k]]
-    f_eval <- list_of_f_eval[[k]]
-    out[, k] <- alpha * rowsums(f_eval * p)
-  }
-  return(log(rowsums(out)))
+  log_f_d <- sapply(1:K, function(i) {
+    log_rowSums_a_times_b(log(list_of_f_eval[[i]]), list_of_densities[[i]])})
+  out <- log_rowSums_a_times_b(log(alpha_matrix), log_f_d)
+  return(out)
 }
 
 # First derivatives
 # First derivatives ------------------------------------------------------------
-d <- function(indexes, list_of_eta, list_of_densities, list_of_f_eval) {
+gd <- function(indexes, list_of_eta, list_of_densities, list_of_f_eval) {
   # SHOULD RENAME d, VERY CONFUSING GIVEN MY NOTATION IN WRITTEN DERIVATIVES
   N <- nrow(list_of_densities[[1]])
   K <- length(indexes)
   out <- matrix(nrow = N, ncol = K)
   list_of_eta2 <- c(list(matrix(0, nrow = N)), list_of_eta)
   for (i in indexes) {
-    out[,i] = exp(list_of_eta2[[i]] + log(rowsums(list_of_densities[[i]] * list_of_f_eval[[i]])))
+    out[,i] = exp(list_of_eta2[[i]] + log_rowSums_a_times_b(list_of_densities[[i]] * log(list_of_f_eval[[i]])))
+    #out[,i] = exp(list_of_eta2[[i]] + log(rowsums(list_of_densities[[i]] * list_of_f_eval[[i]])))
   }
   return(out)
 }
 
 ll_eta <- function(list_of_f_eval, list_of_eta, list_of_densities, alpha_mat) {
   K = length(list_of_densities)
-  ds <- d(1:(K), list_of_eta, list_of_densities, list_of_f_eval)
+  ds <- gd(1:(K), list_of_eta, list_of_densities, list_of_f_eval)
   out <- (ds/rowsums(ds) - alpha_mat/rowsums(alpha_mat))[,-1, drop = FALSE]
   return(lapply(seq_len(ncol(out)), function(i) out[,i]))
 }
@@ -128,7 +136,7 @@ ll_eta2 <- function(alpha, list_of_eta, list_of_densities, list_of_f_eval, list_
   K = ncol(alpha)
   N = nrow(list_of_densities[[1]])
   # SHOULD RENAME d, VERY CONFUSING GIVEN MY NOTATION IN WRITTEN DERIVATIVES
-  ds <- d(1:K, list_of_eta, list_of_densities, list_of_f_eval)
+  ds <- gd(1:K, list_of_eta, list_of_densities, list_of_f_eval)
   ds <- ds/rowsums(ds)
   out <- list()
   for (i in 2:K) {

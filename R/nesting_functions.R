@@ -6,11 +6,11 @@ h <- function(dens, f_deriv, ll_alpha) {
   if (is.list(f_deriv)) {
     out <- list()
     for (i in 1:length(f_deriv)) {
-      out[[i]] <- exp(log_rowSums_a_times_b(dens * log(d_deriv[[i]]))) * ll_alpha
-      # out[[i]] <- rowsums(dens * f_deriv[[i]]) * ll_alpha
+      #out[[i]] <- exp(log_rowSums_a_times_b(dens * log(d_deriv[[i]]))) * ll_alpha
+      out[[i]] <- rowsums(dens * f_deriv[[i]]) * ll_alpha
     }
   } else {
-    out <- exp(log_rowSums_a_times_b(dens, log(f_deriv))) * ll_alpha
+    #out <- exp(log_rowSums_a_times_b(dens, log(f_deriv))) * ll_alpha
     out <-  rowsums(dens * f_deriv) * ll_alpha
   }
   return(out)
@@ -49,8 +49,8 @@ gd <- function(indexes, list_of_eta, list_of_densities, list_of_f_eval) {
   out <- matrix(nrow = N, ncol = K)
   list_of_eta2 <- c(list(matrix(0, nrow = N)), list_of_eta)
   for (i in indexes) {
-    out[,i] = exp(list_of_eta2[[i]] + log_rowSums_a_times_b(list_of_densities[[i]] * log(list_of_f_eval[[i]])))
-    #out[,i] = exp(list_of_eta2[[i]] + log(rowsums(list_of_densities[[i]] * list_of_f_eval[[i]])))
+    #out[,i] = exp(list_of_eta2[[i]] + log_rowSums_a_times_b(list_of_densities[[i]] * log(list_of_f_eval[[i]])))
+    out[,i] = exp(list_of_eta2[[i]] + log(rowsums(list_of_densities[[i]] * list_of_f_eval[[i]])))
   }
   return(out)
 }

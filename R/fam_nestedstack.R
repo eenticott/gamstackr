@@ -9,6 +9,9 @@ get_derivatives <- function(list_of_beta,
                             list_of_inner_functions,
                             list_of_densities,
                             derivs = 1, elementwise = FALSE) {
+  list_of_log_densities <- list_of_densities
+  list_of_densities <- lapply(list_of_log_densities, exp)
+
   N <- nrow(list_of_densities[[1]])
   neta <- unlist(lapply(list_of_inner_functions, function(x) attr(x, "neta")))
   list_of_etaT <- get_list_of_eta(list_of_X_etaT, list_of_betaT)
@@ -36,7 +39,7 @@ get_derivatives <- function(list_of_beta,
     }
   }
 
-  ll_eval <- ll(get_eval("f_eval", eval_store), alpha_matrix, list_of_densities)
+  ll_eval <- ll(get_eval("f_eval", eval_store), alpha_matrix, list_of_log_densities)
 
   grad <- NULL
   hessian <- NULL

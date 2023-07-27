@@ -10,8 +10,9 @@ h <- function(dens, f_deriv, ll_alpha) {
       out[[i]] <- rowsums(dens * f_deriv[[i]]) * ll_alpha
     }
   } else {
+    out <- sign(rowsums(dens*f_deriv)) * exp(log(abs(rowsums(dens*f_deriv))) + ll_alpha)
     #out <- exp(log_rowSums_a_times_b(dens, log(f_deriv))) * ll_alpha
-    out <-  rowsums(dens * f_deriv) * ll_alpha
+    # out <-  rowsums(dens * f_deriv) * ll_alpha
   }
   return(out)
 }

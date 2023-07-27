@@ -48,10 +48,11 @@ get_derivatives <- function(list_of_beta,
   if (derivs >= 1) {
     # First derivatives
     ll_alpha <- alpha_matrix/exp(ll_eval)
+    log_ll_alpha <- log(alpha_matrix) - ll_eval
 
-    ll_etaT_deriv <- ll_etaT(ll_alpha, get_eval("f_eta_eval", eval_store), list_of_densities)
+    ll_etaT_deriv <- ll_etaT(log_ll_alpha, get_eval("f_eta_eval", eval_store), list_of_densities)
 
-    ll_theta_deriv <- unlist(ll_theta(ll_alpha, get_eval("f_theta_eval", eval_store), list_of_densities))
+    ll_theta_deriv <- unlist(ll_theta(log_ll_alpha, get_eval("f_theta_eval", eval_store), list_of_densities))
 
     if (K == 1) {
       ll_eta_deriv <- NULL
@@ -80,8 +81,8 @@ get_derivatives <- function(list_of_beta,
       ll_eta_etaT_eval <- NULL
       eta2 <- NULL
     } else {
-      ll_eta_theta_eval <- ll_eta_theta(get_eval("f_theta_eval", eval_store), get_eval("f_eval", eval_store), list_of_densities, ll_alpha, list_of_X_eta)
-      ll_eta_etaT_eval <- ll_eta_etaT(ll_etaT_deriv, get_eval("f_eval", eval_store),list_of_densities, ll_alpha, list_of_X_eta, list_of_X_etaT)
+      ll_eta_theta_eval <- ll_eta_theta(get_eval("f_theta_eval", eval_store), get_eval("f_eval", eval_store), list_of_densities, log_ll_alpha, list_of_X_eta)
+      ll_eta_etaT_eval <- ll_eta_etaT(ll_etaT_deriv, get_eval("f_eval", eval_store),list_of_densities, log_ll_alpha, list_of_X_eta, list_of_X_etaT)
       eta2 <- ll_eta2(alpha_matrix, list_of_eta, list_of_densities, get_eval("f_eval", eval_store), ll_eta_deriv, list_of_X_eta)
     }
 
@@ -100,9 +101,9 @@ get_derivatives <- function(list_of_beta,
       beta_betaT_derivs[[k1]] <- list()
 
       for (k2 in (1:K)[neta != 0]) {
-        betaT2_derivs[[k1]][[k2]] <- ll_betaT2(ll_alpha, f_eta2T_eval, ll_etaT_deriv, k1, k2, list_of_densities, list_of_X_etaT)
-        theta2_derivs[[k1]][[k2]] <- ll_theta2(ll_alpha, f_theta2_eval, list_of_densities, f_theta_eval, k1, k2)
-        betaT_theta_derivs[[k1]][[k2]] <- ll_etaT_theta(ll_alpha, f_eta_theta_eval, f_eta_eval, f_theta_eval, list_of_densities, k1, k2, list_of_X_etaT)
+        betaT2_derivs[[k1]][[k2]] <- ll_betaT2(log_ll_alpha, f_eta2T_eval, ll_etaT_deriv, k1, k2, list_of_densities, list_of_X_etaT)
+        theta2_derivs[[k1]][[k2]] <- ll_theta2(log_ll_alpha, f_theta2_eval, list_of_densities, f_theta_eval, k1, k2)
+        betaT_theta_derivs[[k1]][[k2]] <- ll_etaT_theta(log_ll_alpha, f_eta_theta_eval, f_eta_eval, f_theta_eval, list_of_densities, k1, k2, list_of_X_etaT)
       }
 
       betaT2_derivs[[k1]] <- do.call("cbind", betaT2_derivs[[k1]])

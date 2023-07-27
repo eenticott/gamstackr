@@ -411,7 +411,7 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
 
     # Retrieve parameters from family
     inners <- family$getInner()
-    list_of_densities <- family$getlogP()
+    list_of_densities <- family$getLogP()
 
     neta <- lapply(inners, function(x) attr(x, "neta"))
     ntheta <- lapply(inners, function(x) attr(x, "ntheta"))

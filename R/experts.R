@@ -1,3 +1,5 @@
+# TODO: Redesign, interface is confusing. Could put into seperate package so 'gamstackr' focus remains clear.
+
 # Example setup ----------------------------------------------------------------
 # fit_func <- function(data) {
 #   lm(y ~ x1 + x2, data = data)
@@ -18,6 +20,17 @@
 # }
 
 # ------------------------------------------------------------------------------
+#' Create an expert that can be fitted, retrieve predictions and simulate from fitted distribution.
+#'
+#' @param fit_func A function that returned a fitted model given a dataframe.
+#' @param pred_func A function that returns predictions given fitted model and data.
+#' @param sim_func A function that simulated from the estimated density given model and data.
+#' @param dens_func A function returns density under fitted model at given data points.
+#'
+#' @return An expert object that can be used within evaluate_expert and evaluate_stack.
+#' @export
+#'
+#' @examples
 create_expert <- function(fit_func, pred_func = NULL, sim_func = NULL, dens_func = NULL) {
   out_list <- list()
 
@@ -63,6 +76,17 @@ create_expert <- function(fit_func, pred_func = NULL, sim_func = NULL, dens_func
 
 # ------------------------------------------------------------------------------
 
+#' Evaluate an expert object over a sliding or expanding window.
+#'
+#' @param expert An expert object created by `create_expert`.
+#' @param windower A window object created by `create_windower`.
+#' @param data A dataframe containing response and features.
+#' @param type List the options you want outputted from "predict", "density" and "model".
+#'
+#' @return A list containing the outputs determined by type.
+#' @export
+#'
+#' @examples
 evaluate_expert <- function(expert, windower, data, type = "predict") {
   list_of_dens <- NULL
   list_of_preds <- NULL
@@ -96,6 +120,18 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
   return(list("preds" = list_of_preds, "dens" = list_of_dens, "model" = model))
 }
 
+#' Evaluate a set of experts with weighting functions.
+#'
+#' @param stacker Stacker object created by `create_stacker`.
+#' @param formula Model formula for the weights. For nested stucture this should be a list of lists.
+#' @param windower A windower object created by `create_windower`.
+#' @param stack_data Data that should be used for stacking, should contain all columns specified by formula.
+#' @param list_of_densities For nested stack this is a list of lists. Densities can be retrieved from experts. Rows should match that of `stack_data`.
+#'
+#' @return list of predicted weights from stacking process.
+#' @export
+#'
+#' @examples
 evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densities) {
   if (nrow(list_of_densities[[1]]) != nrow(stack_data)) {
     stop("Stack data must correspond to given densities, found mismatch in nrow.")
@@ -116,6 +152,15 @@ evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densi
 }
 
 
+#' Create a stacking object from experts and inner functions.
+#'
+#' @param experts List of expert objects created by `create_expert`.
+#' @param inners Function that determines how weights
+#'
+#' @return Stacking object that can take data and return predicted weights for experts.
+#' @export
+#'
+#' @examples
 create_stacker <- function(experts, inners) {
   if (!is.list(experts)) {
     stop("Experts must be supplied in a list.")

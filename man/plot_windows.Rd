@@ -2,7 +2,7 @@
 % Please edit documentation in R/rolling_windows.R
 \name{plot_windows}
 \alias{plot_windows}
-\title{Title}
+\title{Plot windows for easy visualisation.}
 \usage{
 plot_windows(windowed_dat)
 }
@@ -13,5 +13,5 @@ plot_windows(windowed_dat)
 Displays plot showing windowed data
 }
 \description{
-Title
+Plot windows for easy visualisation.
 }

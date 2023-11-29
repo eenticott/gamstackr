@@ -54,7 +54,7 @@ create_windows <- function(df, initial_size, window_size, horizon_size, step_siz
   return(structure(df, "training_windows" = training_idx, "testing_windows" = testing_idx))
 }
 
-#' Title
+#' Plot windows for easy visualisation.
 #'
 #' @param windowed_dat Output of create_windows.
 #'
@@ -76,6 +76,17 @@ plot_windows <- function(windowed_dat) {
   legend("bottomright", legend = c("Train", "Test"), col = c("blue", "orange"), lty = c(1,1))
 }
 
+#' Create a windower for use in stacking/experts.
+#' @param initial_size Int, How large the starting window is.
+#' @param horizon_size Int,  Number of values to be forecast ahead.
+#' @param window_size Int, Width of sliding window.
+#' @param step_size Int, Number of rows added in each iteration.
+#' @param type str, "expanding" or "sliding"
+#'
+#' @return Windower object.
+#' @export
+#'
+#' @examples
 create_windower <- function(initial_size, horizon_size, window_size = NULL, step_size = NULL, type = "expanding") {
   windower <- function(df) {
     create_windows(df, initial_size, window_size, horizon_size, step_size, type)

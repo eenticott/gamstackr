@@ -6,7 +6,7 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of gamstackr is to …
+gamstackr is used to create probabalistic experts and find optimal weights for each expert given a set of covariates. Weights can depend on fixed, smooth or random effects. The weights are fitted by implementing custom `mgcv` families. We implement several weighting structures, including ordinal, multivariate normal and nested stacking. 
 
 ## Installation
 
@@ -18,38 +18,55 @@ You can install the development version of gamstackr from
 devtools::install_github("eenticott/gamstackr")
 ```
 
+## Stacking procedures
+### Multinomial stack
+We can implement a multinomial stack using the nested stack family. Each density needs to be in its' own list and we use a list of id functions for the inner functions. The below is pseudo code for setting up this type of stack.
+
+```r
+logP = list(den1, den2, den3)
+inner_functions = list(id(), id(), id())
+stack_fam = NestedStack(logP, inner_functions)
+```
+
+### Ordinal stack
+```r
+logP = list(cbind(den1, den2, den3))
+inner_functions = list(ordinal(3))
+stack_fam = NestedStack(logP, inner_functions)
+```
+
+### 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+This is a simple example of implementing a stacking model using the iris data set in R. We fit three experts that aim to predict `Sepal.Length` using the other numeric columns in the data set. We fit a multinomial stack using the `NestedStack` family.
 
 ``` r
 library(gamstackr)
-## basic example code
+library(mgcv)
+
+data("iris")
+
+ex1 <- lm(Sepal.Length ~ Sepal.Width, data = iris)
+ex2 <- lm(Sepal.Length ~ Petal.Length, data = iris)
+ex3 <- lm(Sepal.Length ~ Petal.Width, data = iris)
+
+den1 <- matrix(dnorm(iris$Sepal.Length, predict(ex1), sd(ex1$residuals), log = TRUE))
+den2 <- matrix(dnorm(iris$Sepal.Length, predict(ex2), sd(ex2$residuals), log = TRUE))
+den3 <- matrix(dnorm(iris$Sepal.Length, predict(ex3), sd(ex3$residuals), log = TRUE))
+
+stack_fam = NestedStack(list(den1, den2, den3), list(id(), id(), id()))
+
+stack <- gam(list(Sepal.Length ~ Species,  ~Species), data = iris, family = stack_fam)
+
+W <- predict(stack, type = "response")
+
+barplot(t(unique(W[,1:3])), col = unique(iris$Species), 
+        names.arg = unique(iris$Species), xlab = "Species", ylab = "Weight")
+legend("topright", legend = c("Expert 1", "Expert 2", "Expert 3"), fill = unique(iris$Species))
+
+
 ```
+We see that overall expert 2 is given by far the most weight but expert 1 appears to be useful for the setosa species.
 
-What is special about using `README.Rmd` instead of just `README.md`?
-You can include R chunks like so:
+<img src="gamstackr_files/weight_plot.png" style="display:block; margin: auto" style="display: block; margin: auto;" />
 
-``` r
-summary(cars)
-#>      speed           dist       
-#>  Min.   : 4.0   Min.   :  2.00  
-#>  1st Qu.:12.0   1st Qu.: 26.00  
-#>  Median :15.0   Median : 36.00  
-#>  Mean   :15.4   Mean   : 42.98  
-#>  3rd Qu.:19.0   3rd Qu.: 56.00  
-#>  Max.   :25.0   Max.   :120.00
-```
-
-You’ll still need to render `README.Rmd` regularly, to keep `README.md`
-up-to-date. `devtools::build_readme()` is handy for this. You could also
-use GitHub Actions to re-render `README.Rmd` every time you push. An
-example workflow can be found here:
-<https://github.com/r-lib/actions/tree/v1/examples>.
-
-You can also embed plots, for example:
-
-<img src="man/figures/README-pressure-1.png" width="100%" />
-
-In that case, don’t forget to commit and push the resulting figure
-files, so they display on GitHub and CRAN.

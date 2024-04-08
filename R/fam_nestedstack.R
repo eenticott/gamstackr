@@ -44,7 +44,6 @@ get_derivatives <- function(list_of_beta,
   grad <- NULL
   hessian <- NULL
 
-
   if (derivs >= 1) {
     # First derivatives
     ll_alpha <- alpha_matrix/exp(ll_eval)

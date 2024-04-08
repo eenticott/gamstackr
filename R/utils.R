@@ -19,7 +19,6 @@ list_by_vector <- function(l, v) {
   return(out)
 }
 
-
 list_by_list <- function(list1, list2, elementwise = FALSE) {
   if (!is.list(list1)) {
     list1 <- list(list1)

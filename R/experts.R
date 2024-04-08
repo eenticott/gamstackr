@@ -104,8 +104,14 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
   windowed_dat <- windower(data)
   list_of_preds <- list()
   model <- NULL
+  pb <- txtProgressBar(min = 0,
+                       max = length(attr(windowed_dat, "training_windows")),
+                       style = 3,
+                       width = 50,
+                       char = "=")
+
   for (i in 1:length(attr(windowed_dat, "training_windows"))) {
-    cat(paste0(i, "/", length(attr(windowed_dat, "training_windows"))), "\n")
+    #cat(paste0(i, "/", length(attr(windowed_dat, "training_windows"))), "\n")
     expert <- expert$fit(expert, windowed_dat[attr(windowed_dat, "training_windows")[[i]],])
     if ("density" %in% type) {
       list_of_dens[[i]] <- expert$density(expert, windowed_dat[attr(windowed_dat, "testing_windows")[[i]],])
@@ -116,7 +122,9 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
     if ("model" %in% type) {
       model <- expert$fitted_model
     }
+    setTxtProgressBar(pb, i)
   }
+  close(pb)
   return(list("preds" = list_of_preds, "dens" = list_of_dens, "model" = model))
 }
 
@@ -139,15 +147,24 @@ evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densi
 
   stacking_dat <- windower(stack_data)
   out_list <- list()
+
+  pb <- txtProgressBar(min = 0,
+                       max = length(attr(stacking_dat, "training_windows")),
+                       style = 3,
+                       width = 50,
+                       char = "=")
+
   for (i in 1:length(attr(stacking_dat, "training_windows"))) {
-    cat(paste0(i, "/", length(attr(stacking_dat, "training_windows"))), "\n")
+    #cat(paste0(i, "/", length(attr(stacking_dat, "training_windows"))), "\n")
     stack_dat <-  stacking_dat[attr(stacking_dat, "training_windows")[[i]],,drop = FALSE]
     test_dat <- stacking_dat[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE]
     clod <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "training_windows")[[i]],, drop = FALSE])
     clotd <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE])
     stacker <- stacker$fit_stack(stacker, formula, stack_dat, clod)
     out_list[[i]] <- stacker$predict(stacker, test_dat, clotd, "weights")
+    setTxtProgressBar(pb, i)
   }
+  close(pb)
   return(out_list)
 }
 
@@ -236,6 +253,38 @@ create_stacker <- function(experts, inners) {
   }
 
   return(stacker)
+}
+
+
+#' Fit a set of experts and stack them over an out-of-sample window.
+#'
+#' @param experts description
+#' @param stacker Stacker object created by `create_stacker`.
+#' @param formula Model formula for the weights. For nested stucture this should be a list of lists.
+#' @param expert_windower A windower object created by `create_windower` used for evaluating experts.
+#' @param stack_windower A windower object created by `create_windower` used for evaluating stacks.
+#' @param dat Data that should be used for fitting experts and stacking, should contain all columns specified by formula.
+#'
+#' @return list of predicted weights from stacking process.
+#' @export
+#'
+#' @examples
+evaluate_all <- function(experts, stacker, formula, expert_windower, stack_windower, dat) {
+  # First evaluate experts over expert windows.
+  expert_dat <- expert_windower(dat)
+  stack_dat <- stack_windower(dat[])
+  evaluate_expert()
+  out_list <- list()
+  for (i in 1:length(attr(stacking_dat, "training_windows"))) {
+    cat(paste0(i, "/", length(attr(stacking_dat, "training_windows"))), "\n")
+    stack_dat <-  stacking_dat[attr(stacking_dat, "training_windows")[[i]],,drop = FALSE]
+    test_dat <- stacking_dat[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE]
+    clod <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "training_windows")[[i]],, drop = FALSE])
+    clotd <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE])
+    stacker <- stacker$fit_stack(stacker, formula, stack_dat, clod)
+    out_list[[i]] <- stacker$predict(stacker, test_dat, clotd, "weights")
+  }
+  return(out_list)
 }
 
 bind_output <- function(list_of_lists, type) {

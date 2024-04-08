@@ -329,6 +329,9 @@ MVN_weights <- function(x, dim_num) {
             out[[alpha]][[beta]] <- p1 + p2 + p3 + p4 + p35
           }
         }
+        if (dim_num==1) {
+          out <- unlist(unlist(out, recursive = F), recursive = F)
+        }
         store$f_eta2_eval <- out
 
         out <- list()

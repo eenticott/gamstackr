@@ -287,10 +287,3 @@ evaluate_all <- function(experts, stacker, formula, expert_windower, stack_windo
   return(out_list)
 }
 
-bind_output <- function(list_of_lists, type) {
-  do.call("cbind", lapply(list_of_lists, function(x) do.call("c", x[[type]])))
-}
-
-
-
-

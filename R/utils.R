@@ -92,6 +92,10 @@ matrix_to_lov <- function(X) {
   lapply(seq_len(ncol(X)), function(i) X[,i])
 }
 
+bind_output <- function(list_of_lists, type) {
+  do.call("cbind", lapply(list_of_lists, function(x) do.call("c", x[[type]])))
+}
+
 #' Internals
 #'
 #' @return List of internal functions to be exported
@@ -103,5 +107,6 @@ matrix_to_lov <- function(X) {
   internals[["eta_to_alpha"]] <- eta_to_alpha
   internals[["list_times_list"]] <- list_times_list
   internals[["matrix_to_lov"]] <- matrix_to_lov
+  internals[["bind_output"]] <- bind_output
   return(internals)
 }

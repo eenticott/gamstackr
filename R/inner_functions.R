@@ -259,7 +259,7 @@ MVN_weights <- function(x, dim_num) {
   x <- t(x)
 
   get_derivs <- function(eta, theta, deriv = 1) {
-    if (ncol(eta) > 1) {eta <- do.call("cbind", eta)}
+    if (is.list(eta)) {eta <- do.call("cbind", eta)}
     tau <- exp(theta)
     dens_matrix <- matrix(nrow = nrow(eta) * n_k, ncol = dim_num)
 

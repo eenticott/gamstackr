@@ -396,7 +396,7 @@ MVN_weights <- function(x, dim_num) {
   init_func <- function(densities) {
     theta <- (apply(t(x), 1, (stats::var)))
     y1 <- max.col(densities)
-    mustart <- (x[y1, ])
+    mustart <- (x[y1, ,drop=FALSE])
     return(list(init_theta = log(theta), init_mu = mustart))
   }
 

@@ -41,6 +41,39 @@ get_derivatives <- function(list_of_beta,
 
   ll_eval <- ll(get_eval("f_eval", eval_store), alpha_matrix, list_of_log_densities)
 
+  l_calc <- function(pars) {
+    list_of_betaT <- list(pars[1:(length(pars)-attr(list_of_inner_functions[[k]], "ntheta"))])
+    list_of_theta <- list(pars[(length(pars)-attr(list_of_inner_functions[[k]], "ntheta")):length(pars)])
+
+    N <- nrow(list_of_densities[[1]])
+    neta <- unlist(lapply(list_of_inner_functions, function(x) attr(x, "neta")))
+    list_of_etaT <- get_list_of_eta(list_of_X_etaT, list_of_betaT)
+    list_of_eta <- get_list_of_eta(list_of_X_eta, list_of_beta)
+    if (length(list_of_eta) == 0) {
+      list_of_eta <- list(matrix(rep(1, N), nrow = N))
+      alpha_matrix <- list_of_eta[[1]]
+    } else {
+      alpha_matrix <- eta_to_alpha(list_of_eta)
+    }
+
+    if (derivs == 1) {
+      derivs = 2
+    } else if (derivs == 0) {
+      derivs = 0
+    }
+
+    K <-length(list_of_theta)
+    # Store evaluated inputs
+    eval_store <- list()
+    for (k in 1:length(list_of_inner_functions)) {
+      eval_store[[k]] <- eval_deriv(list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]],deriv = derivs)
+      if (attr(list_of_inner_functions[[k]], "name") == "id") {
+        eval_store[[k]]$f_eval <- matrix(1, nrow = nrow(alpha_matrix))
+      }
+    }
+    ll_eval <- ll(get_eval("f_eval", eval_store), alpha_matrix, list_of_densities)
+  }
+
   grad <- NULL
   hessian <- NULL
 

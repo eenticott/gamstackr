@@ -318,7 +318,7 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
           list_of_betaT[ii] <- NULL
           list_of_X_etaT[ii] <- NULL
         } else
-          if (n_eta == 1) { # Single eta case
+          if (n_eta == -1) { # Single eta case
             y <- init_pars[[ii]]$init_mu
             x1 <- x[, lpi[[ij]], drop = FALSE]
             e1 <- E[, lpi[[ij]], drop = FALSE]
@@ -442,7 +442,7 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
         list_of_betaT[ii] <- list(NULL)
         list_of_X_etaT[ii] <- list(NULL)
       } else
-        if (n_eta == 1) {
+        if (n_eta == -1) {
           list_of_betaT[[ii]] <- coef[lpi[[ij]]]
           list_of_X_etaT[[ii]] <- x[, lpi[[ij]], drop = FALSE]
         } else {

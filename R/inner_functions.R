@@ -147,6 +147,7 @@ ordinal <- function(num_weights) { # nolint
   }
 
   get_derivs <- function(eta, tau, deriv) {
+    eta <- eta[[1]] # eta is always a list with one element
     store <- list()
     tau <- c(stats::qlogis(1/num_weights), tau)
     theta <- c(tau[1], tau[1] + cumsum(exp(tau[-1])))
@@ -162,10 +163,9 @@ ordinal <- function(num_weights) { # nolint
 
       }
       if (deriv >= 2) {
-        store$f_eta2_eval <- f_eta2(eta, theta)
-
-        store$f_eta_theta_eval <- list_by_vector(rev(mat_cumsum(rev(f_eta_theta(eta, theta)))),
-                                                 c(tau[1], exp(tau[-1])))[-1]
+        store$f_eta2_eval <- list(f_eta2(eta, theta))
+        store$f_eta_theta_eval <- list(list_by_vector(rev(mat_cumsum(rev(f_eta_theta(eta, theta)))),
+                                                 c(tau[1], exp(tau[-1])))[-1])
         if (num_weights > 2) {
           f_theta2_orig <- f_theta2(eta, theta)
           f_theta2_d <- get_diag(f_theta2_orig)
@@ -205,7 +205,7 @@ ordinal <- function(num_weights) { # nolint
     if (num_weights == 2) {
       init_tau <- NULL
     }
-    return(list(init_mu = mustart, init_theta = init_tau))
+    return(list(init_mu = matrix(mustart), init_theta = init_tau))
   }
 
   pen <- function(tau, deriv = 0) {
@@ -221,13 +221,16 @@ ordinal <- function(num_weights) { # nolint
 
       pen_hess <- outer(exp(tau), exp(tau)) * 2 * max_index_mat(n - 2) + diag(pen_grad,)
     }
-
     return(list(p = pen, pt = pen_grad, ptt = pen_hess))
   }
-
   name = "ordinal"
-
-  return(structure(get_derivs, init_func = init_func, theta_pen = pen, neta = 1, ntheta = num_weights - 2, num_weights = num_weights, name = "ordinal"))
+  return(structure(get_derivs,
+                   init_func = init_func,
+                   theta_pen = pen,
+                   neta = 1,
+                   ntheta = num_weights - 2,
+                   num_weights = num_weights,
+                   name = "ordinal"))
 }
 
 # Multivariate normal inner functions ------------------------------------------
@@ -329,9 +332,6 @@ MVN_weights <- function(x, dim_num) {
             out[[alpha]][[beta]] <- p1 + p2 + p3 + p4 + p35
           }
         }
-        if (dim_num==1) {
-          out <- unlist(unlist(out, recursive = F), recursive = F)
-        }
         store$f_eta2_eval <- out
 
         out <- list()
@@ -409,10 +409,12 @@ MVN_weights <- function(x, dim_num) {
 
     if (deriv > 0) {
       pen_grad <- theta * 2 * (theta - v)
-
-      pen_hess <- diag((4 * theta - 2 * v) * theta)
+      if (is.numeric(pen_grad)) {
+        pen_hess <- matrix((4 * theta - 2 * v) * theta)
+      } else {
+        pen_hess <- diag((4 * theta - 2 * v) * theta)
+      }
     }
-
 
     return(list(p = pen, pt = pen_grad, ptt = pen_hess))
   }

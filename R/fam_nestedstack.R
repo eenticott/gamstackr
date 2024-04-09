@@ -664,7 +664,7 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
         list_of_betaT[ii] <- list(NULL)
         list_of_X_etaT[ii] <- list(NULL)
       } else
-        if (n_eta == 1) {
+        if (n_eta == -1) {
           list_of_betaT[[ii]] <- beta[lpi[[ij]]]
           list_of_X_etaT[[ii]] <- X[, lpi[[ij]], drop = FALSE]
         } else {

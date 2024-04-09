@@ -42,8 +42,8 @@ get_derivatives <- function(list_of_beta,
   ll_eval <- ll(get_eval("f_eval", eval_store), alpha_matrix, list_of_log_densities)
 
   l_calc <- function(pars) {
-    list_of_betaT <- list(pars[1:(length(pars)-attr(list_of_inner_functions[[k]], "ntheta"))])
-    list_of_theta <- list(pars[(length(pars)-attr(list_of_inner_functions[[k]], "ntheta")):length(pars)])
+    list_of_betaT <- list(list(pars[1:(length(pars)-attr(list_of_inner_functions[[k]], "ntheta"))]))
+    list_of_theta <- list(list(pars[(length(pars)-attr(list_of_inner_functions[[k]], "ntheta")):length(pars)]))
 
     N <- nrow(list_of_densities[[1]])
     neta <- unlist(lapply(list_of_inner_functions, function(x) attr(x, "neta")))
@@ -72,6 +72,7 @@ get_derivatives <- function(list_of_beta,
       }
     }
     ll_eval <- ll(get_eval("f_eval", eval_store), alpha_matrix, list_of_densities)
+    return(sum(ll_eval))
   }
 
   grad <- NULL

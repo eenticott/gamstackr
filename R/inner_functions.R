@@ -154,7 +154,7 @@ ordinal <- function(num_weights) { # nolint
     store$f_eval <- f(eta, theta)
 
     if (deriv >= 1) {
-      store$f_eta_eval <- f_eta(eta, theta)
+      store$f_eta_eval <- list(f_eta(eta, theta))
 
       # Take cumulative sum of reverse order, then reverse so sum at front and just last term at end
       store$f_theta_eval <- list_by_vector(rev(mat_cumsum(rev(f_theta(eta, theta)))), c(tau[1], exp(tau[-1])))[-1]

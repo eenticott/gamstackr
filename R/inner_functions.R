@@ -409,7 +409,7 @@ MVN_weights <- function(x, dim_num) {
 
     if (deriv > 0) {
       pen_grad <- theta * 2 * (theta - v)
-      if (is.numeric(pen_grad)) {
+      if (length(pen_grad) == 1) {
         pen_hess <- matrix((4 * theta - 2 * v) * theta)
       } else {
         pen_hess <- diag((4 * theta - 2 * v) * theta)

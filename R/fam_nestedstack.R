@@ -43,8 +43,7 @@ get_derivatives <- function(list_of_beta,
 
   l_calc <- function(pars) {
     list_of_betaT <- list(list(pars[1:(length(pars)-attr(list_of_inner_functions[[k]], "ntheta"))]))
-    list_of_theta <- list(list(pars[(length(pars)-attr(list_of_inner_functions[[k]], "ntheta")):length(pars)]))
-
+    list_of_theta <- list(pars[(length(pars)-attr(list_of_inner_functions[[k]], "ntheta")+1):length(pars)])
     N <- nrow(list_of_densities[[1]])
     neta <- unlist(lapply(list_of_inner_functions, function(x) attr(x, "neta")))
     list_of_etaT <- get_list_of_eta(list_of_X_etaT, list_of_betaT)
@@ -71,7 +70,7 @@ get_derivatives <- function(list_of_beta,
         eval_store[[k]]$f_eval <- matrix(1, nrow = nrow(alpha_matrix))
       }
     }
-    ll_eval <- ll(get_eval("f_eval", eval_store), alpha_matrix, list_of_densities)
+    ll_eval <- ll(get_eval("f_eval", eval_store), alpha_matrix, list_of_log_densities)
     return(sum(ll_eval))
   }
 
@@ -134,7 +133,12 @@ get_derivatives <- function(list_of_beta,
       beta_betaT_derivs[[k1]] <- list()
 
       for (k2 in (1:K)[neta != 0]) {
-        betaT2_derivs[[k1]][[k2]] <- ll_betaT2(log_ll_alpha, f_eta2T_eval, ll_etaT_deriv, k1, k2, list_of_densities, list_of_X_etaT)
+        betaT2_derivs[[k1]][[k2]] <- ll_betaT2(log_ll_alpha,
+                                               f_eta2T_eval,
+                                               ll_etaT_deriv,
+                                               k1, k2,
+                                               list_of_densities,
+                                               list_of_X_etaT)
         theta2_derivs[[k1]][[k2]] <- ll_theta2(log_ll_alpha, f_theta2_eval, list_of_densities, f_theta_eval, k1, k2)
         betaT_theta_derivs[[k1]][[k2]] <- ll_etaT_theta(log_ll_alpha, f_eta_theta_eval, f_eta_eval, f_theta_eval, list_of_densities, k1, k2, list_of_X_etaT)
       }

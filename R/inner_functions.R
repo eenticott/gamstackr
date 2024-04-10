@@ -163,7 +163,7 @@ ordinal <- function(num_weights) { # nolint
 
       }
       if (deriv >= 2) {
-        store$f_eta2_eval <- list(f_eta2(eta, theta))
+        store$f_eta2_eval <- list(list(f_eta2(eta, theta)))
         store$f_eta_theta_eval <- list(list_by_vector(rev(mat_cumsum(rev(f_eta_theta(eta, theta)))),
                                                  c(tau[1], exp(tau[-1])))[-1])
         if (num_weights > 2) {

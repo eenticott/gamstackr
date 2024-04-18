@@ -281,7 +281,7 @@ ll_etaT_theta <- function(ll_alpha, f_eta_theta_eval, f_eta_eval, f_theta_eval, 
     } else {
       #out[[q]] <-  do.call("rbind", list_take_list(part1[[q]], lapply(ll_eta_k1, "*", h(p2, f_theta_eval[[k2]][[q]], ll_alpha[,k2]))))
       out[[q]] <- do.call("rbind",list_by_list(list_of_X_etaT[[k1]],
-                                               list_take_list(part1[[q]],
+                                               list_take_list(list(part1[[1]][[q]]),
                                                               lapply(ll_eta_k1, "*", h(p2, f_theta_eval[[k2]][[q]], ll_alpha[,k2])))))
     }
   }

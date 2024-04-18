@@ -6,18 +6,22 @@
 # ex1 <- lm(Sepal.Length ~ Sepal.Width, data = iris)
 # ex2 <- lm(Sepal.Length ~ Petal.Length, data = iris)
 # ex3 <- lm(Sepal.Length ~ Petal.Width, data = iris)
+# ex4 <- lm(Sepal.Length ~ Petal.Width + Sepal.Width, data = iris)
+# ex5 <- lm(Sepal.Length ~ Petal.Width + Petal.Length, data = iris)
 #
 # den1 <- matrix(dnorm(iris$Sepal.Length, predict(ex1), sd(ex1$residuals), log = TRUE))
 # den2 <- matrix(dnorm(iris$Sepal.Length, predict(ex2), sd(ex2$residuals), log = TRUE))
 # den3 <- matrix(dnorm(iris$Sepal.Length, predict(ex3), sd(ex3$residuals), log = TRUE))
+# den4 <- matrix(dnorm(iris$Sepal.Length, predict(ex4), sd(ex4$residuals), log = TRUE))
+# den5 <- matrix(dnorm(iris$Sepal.Length, predict(ex5), sd(ex5$residuals), log = TRUE))
 #
-# stack_fam = NestedStack(list(den1, den2, den3), list(id(), id(), id()))
-# stack_fam = NestedStack(list(cbind(den1, den2, den3)), list(ordinal(3)))
-# stack_fam = NestedStack(list(cbind(den1, den2, den3)), list(MVN_weights(x=matrix(c(1,2,3),nrow=1))))
+# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5)), list(ordinal(5)))
+# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5)), list(ordinal(5)))
+# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5)), list(MVN_weights(x=matrix(c(1,2,3,4,5),nrow=1))))
 # stack <- gam(list(Sepal.Length ~ Species + Sepal.Width), data = iris, family = stack_fam)
+
 #
-#
-# stack <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species), data = iris, family = stack_fam)
+# #stack <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species), data = iris, family = stack_fam)
 #
 # W <- predict(stack, type = "response")
 #
@@ -80,31 +84,31 @@
 # list_of_X_etaT <- list(list(cbind(1, matrix(rnorm(nrow(iris)),ncol=1))))
 # list_of_beta <- list()
 # list_of_X_eta <- list()
-# list_of_theta <- list(c(1))
+# list_of_theta <- list(c(1,2,3))
 # dv_calc <- get_derivatives(list_of_beta,
 #                            list_of_betaT,
 #                            list_of_theta,
 #                            list_of_X_eta,
 #                            list_of_X_etaT,
-#                            list(ordinal(3)),
-#                            list_of_densities = list(exp(cbind(den1, den2, den3))))
+#                            list(ordinal(5)),
+#                            list_of_densities = list(exp(cbind(den1, den2, den3, den4, den5))))
 #
 # deriv_check <- function(pars) {
 #   list_of_betaT <- list(list(pars[1:2]))
-#   list_of_theta <- list(pars[3])
+#   list_of_theta <- list(pars[3:5])
 #   get_derivatives(list_of_beta,
 #                   list_of_betaT,
 #                   list_of_theta,
 #                   list_of_X_eta,
 #                   list_of_X_etaT,
-#                   list(ordinal(3)),
-#                   list_of_densities = list(exp(cbind(den1, den2, den3))))$ll
+#                   list(ordinal(5)),
+#                   list_of_densities = list(exp(cbind(den1, den2, den3, den4, den5))))$ll
 # }
 #
-# dv_estg <- numDeriv::grad(deriv_check, c(1,1,1))
-# dv_esth <- numDeriv::hessian(deriv_check, c(1,1,1))
+# dv_estg <- numDeriv::grad(deriv_check, c(1,1,1,2,3))
+# dv_esth <- numDeriv::hessian(deriv_check, c(1,1,1,2,3))
 # dv_calc$llb/dv_estg
-# dv_calc$llbb/dv_esth
+# dv_calc$llbb-dv_esth
 #
 #
 # f <- function(pars) {
@@ -125,4 +129,4 @@
 # }
 #
 # numDeriv::grad(fgc, c(1,1,1,1))
-#
+# #

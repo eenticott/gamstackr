@@ -244,23 +244,14 @@ ll_theta2 <- function(ll_alpha, f_theta2_eval, list_of_densities, f_theta_eval, 
 ### eta tilde and theta
 ll_etaT_theta <- function(ll_alpha, f_eta_theta_eval, f_eta_eval, f_theta_eval, list_of_densities, k1, k2, list_of_X_etaT) {
   N <- nrow(ll_alpha)
-  if (is.list(f_eta_eval[[k1]])) {
-    no_etas = length(f_eta_eval[[k1]])
-  } else {
-    no_etas = 1
-  }
+  no_etas = length(f_eta_eval[[k1]])
   p1 <- (list_of_densities[[k1]])
   p2 <- (list_of_densities[[k2]])
 
   part1 <- list()
   if (k1 == k2) {
-    for (q in 1:length(f_eta_theta_eval[[k1]])) {
-      if (no_etas != 1) {
+    for (q in 1:length(f_eta_theta_eval[[k1]][[1]])) {
         part1[[q]] <- h(p1, lapply(1:no_etas, function(x) {f_eta_theta_eval[[k1]][[x]][[q]]}), ll_alpha[,k1])
-      } else {
-        part1[[q]] <- h(p1, f_eta_theta_eval[[k1]][[q]], ll_alpha[,k1])
-      }
-
     }
   } else {
     for (q in 1:length(f_theta_eval[[k2]])) {
@@ -281,8 +272,8 @@ ll_etaT_theta <- function(ll_alpha, f_eta_theta_eval, f_eta_eval, f_theta_eval, 
     } else {
       #out[[q]] <-  do.call("rbind", list_take_list(part1[[q]], lapply(ll_eta_k1, "*", h(p2, f_theta_eval[[k2]][[q]], ll_alpha[,k2]))))
       out[[q]] <- do.call("rbind",list_by_list(list_of_X_etaT[[k1]],
-                                               list_take_list(list(part1[[1]][[q]]),
-                                                              lapply(ll_eta_k1, "*", h(p2, f_theta_eval[[k2]][[q]], ll_alpha[,k2])))))
+                                               list_take_list(part1[[q]],
+                                               lapply(ll_eta_k1, "*", h(p2, f_theta_eval[[k2]][[q]], ll_alpha[,k2])))))
     }
   }
   return(do.call("cbind", out))

@@ -441,6 +441,14 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
     #print(str(x))
     given_lpi <- attr(x,"lpi")
     lpi <- getlpi()
+    lpi <- given_lpi
+    if (!is.null(attr(x, "drop"))) {
+      drop_idx <- attr(x, "drop")
+      if (any(drop_idx > Reduce("+",lapply(lpi, function(lpi_ii) length(lpi_ii))))) {
+        nd_theta <- sum(drop_idx > Reduce("+",lapply(lpi, function(lpi_ii) length(lpi_ii))))
+        coef <- c(coef, rep(0, nd_theta))
+      }
+    }
 
     if (!identical(given_lpi, lpi)) {
       stop("Mismatch in design matrices.")

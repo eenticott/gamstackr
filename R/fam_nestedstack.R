@@ -270,7 +270,7 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
   putCoef <- function(.x) assign(".coef", .x, envir = environment(sys.function()))
 
   # MWF
-  assign(".MWF", FALSE, envir = environment())
+  assign(".MWF", TRUE, envir = environment())
   getMWF <- function() get(".MWF")
   putMWF <- function(.x) assign(".MWF", .x, envir = environment(sys.function()))
 

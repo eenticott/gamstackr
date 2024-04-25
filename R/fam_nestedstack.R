@@ -440,13 +440,16 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
     ##       K+c(0,cumsum(neta))[i] : K+c(0,cumsum(neta))[i+1] coefs for inner model i
     #print(str(x))
     given_lpi <- attr(x,"lpi")
-    lpi <- getlpi()
+    orig_lpi <- getlpi()
     lpi <- given_lpi
     if (!is.null(attr(x, "drop"))) {
       drop_idx <- attr(x, "drop")
-      if (any(drop_idx > Reduce("+",lapply(lpi, function(lpi_ii) length(lpi_ii))))) {
-        nd_theta <- sum(drop_idx > Reduce("+",lapply(lpi, function(lpi_ii) length(lpi_ii))))
-        coef <- c(coef, rep(0, nd_theta))
+      orig_nx <-  Reduce("+",lapply(orig_lpi, function(lpi_ii) length(lpi_ii)))
+      cur_nx <- Reduce("+",lapply(lpi, function(lpi_ii) length(lpi_ii)))
+      theta_pad_idx <- drop_idx[drop_idx > orig_nx] - orig_nx
+      lpi_pad_idx <- theta_pad_idx + cur_nx
+      for (idx in lpi_pad_idx) {
+        coef <- c(coef[1:(idx-1)], 0, coef[idx:length(coef)])
       }
     }
 
@@ -591,6 +594,9 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
       lbb <- lbb - lbb_pen
     }
 
+    if (!is.null(lpi_pad_idx)) {
+      return(list(l = l, lb = lb[-lpi_pad_idx], lbb = lbb[-lpi_pad_idx, -lpi_pad_idx]))
+    }
     return(list(l = l, lb = lb, lbb = lbb))
   }
 

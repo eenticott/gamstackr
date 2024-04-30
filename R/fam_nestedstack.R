@@ -594,7 +594,7 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
       lbb <- lbb - lbb_pen
     }
 
-    if (!is.null(lpi_pad_idx)) {
+    if (exists("lpi_pad_idx")) {
       return(list(l = l, lb = lb[-lpi_pad_idx], lbb = lbb[-lpi_pad_idx, -lpi_pad_idx]))
     }
     return(list(l = l, lb = lb, lbb = lbb))

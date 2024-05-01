@@ -251,6 +251,7 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
   # inner
   assign(".inner", inner_funcs, envir = environment())
   getInner <- function() get(".inner")
+  putInner <- function(.x) assign(".inner", .x, envir = environment(sys.function()))
 
   # Ridgepen
   assign(".RidgePen", RidgePen, envir = environment())
@@ -789,6 +790,7 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
                  getlpi = getlpi,
                  putlpi = putlpi,
                  getInner = getInner,
+                 putInner = putInner,
                  getNparams = getNparams,
                  getCoef = getCoef,
                  putCoef = putCoef,

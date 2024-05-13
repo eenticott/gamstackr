@@ -432,6 +432,209 @@ MVN_weights <- function(x, dim_num) {
   ))
 }
 
+# Multivariate normal inner functions ------------------------------------------
+#' Produces an object containing derivatives for multivariate normal stacking
+#'
+#' @param x Array of (dim_num, n_k) specifying locations for each of the models
+#' @param dim_num Integer specifying number of dimensions required
+#'
+#' @return Object containing derivatives for multivariate normal stacking
+#' @export
+#'
+#' @examples
+#' x <- matrix(c(1:6), nrow = 3)
+#' MVN_weights(x, 3)
+MVN_weights2 <- function(x, dim_num) {
+  # Input
+  # -----
+  # x - Array of (dim_num, n_k) specifying locations for each of the models
+  # Suppose we have N data points
+  # n_k inner functions
+  # inner functions f_j depend on:
+  #   etaT_1,..., etaT_p
+  #   etaT denotes tilde(eta)
+  #   theta_1,..., theta_q
+  force(x)
+  n_k <- ncol(x)
+  dim_num <- nrow(x)
+
+  x <- t(x)
+  store <- list()
+  force(store)
+
+
+  get_derivs <- function(eta, theta, deriv = 1) {
+    if (is.list(eta)) {eta <- do.call("cbind", eta)}
+    tau <- exp(theta)
+    dens_matrix <- matrix(nrow = nrow(eta) * n_k, ncol = dim_num)
+
+    for (n in 1:dim_num) {
+      dens_matrix[, n] <-  llk_gaussian(rep(x[, n], each = nrow(eta)),
+                                        param = list(rep(eta[, n], n_k), 1 / sqrt(tau[n])),
+                                        deriv = 0)$d0
+    }
+
+    log_dens <- matrix(rowsums(dens_matrix), ncol = n_k)
+    shift_mat <- log_dens - matrixStats::rowMaxs(log_dens)
+
+    store <- list()
+
+    expshift <- exp(shift_mat)
+    rs_expshift <- rowsums(expshift)
+
+    store$f_eval <- expshift / rs_expshift
+
+    if (deriv >= 1) {
+      dens_list <- list()
+      for (n in 1:dim_num) {
+        dens_list[[n]] <-  llk_gaussian(rep(x[, n], each = nrow(eta)),
+                                        param = list(rep(eta[, n], n_k), 1 / sqrt(tau[n])),
+                                        deriv = 2)
+      }
+
+      detas <- sapply(dens_list, "[[", "d1")[1, ]
+
+      dtaus <- sapply(dens_list, "[[", "d1")[2, ]
+
+      f_eta_out <- list()
+      f_tau_out <- list()
+
+      for (i in 1:dim_num) {
+        l1 <- matrix(detas[[i]], ncol = n_k)
+        l2 <- matrix(dtaus[[i]], ncol = n_k)
+
+        f_eta_out[[i]] <- store$f_eval * (l1 - (rowsums(l1 * expshift)) / rs_expshift)
+        f_tau_out[[i]] <- store$f_eval * (l2 - (rowsums(l2 * expshift)) / rs_expshift)
+      }
+      # remember to delete eval_dens from func defs
+      store$f_eta_eval <- f_eta_out
+      store$f_tau_eval <- f_tau_out
+      store$f_theta_eval <- list_by_vector(f_tau_out, tau)
+
+      if (deriv >= 2) {
+        out <- list()
+
+        for (alpha in 1:dim_num) {
+          out[[alpha]] <- list()
+          dalpha2 <- matrix(dens_list[[alpha]]$d2[[1]], ncol = n_k)
+          dalpha1 <- matrix(dens_list[[alpha]]$d1[[1]], ncol = n_k)
+
+          for (beta in 1:dim_num) {
+            dbeta1 <- matrix(dens_list[[beta]]$d1[[1]], ncol = n_k)
+            if (alpha == beta) {
+              d2 <- (dalpha2 + dalpha1**2)
+            } else {
+              d2 <- dalpha1 * dbeta1
+            }
+            p1 <- d2 * store$f_eval
+            p2 <- - rowsums(dbeta1 * expshift) * store$f_eval * dalpha1 / rs_expshift
+            p3 <- - (rowsums(d2 * expshift) * store$f_eval) / rs_expshift
+            p35 <- - rowsums(dalpha1 * expshift) * store$f_eval * dbeta1 / rs_expshift
+            p4 <- rowsums(dbeta1 * expshift) * rowsums(dalpha1 * expshift) * 2 * store$f_eval / rs_expshift^2
+            out[[alpha]][[beta]] <- p1 + p2 + p3 + p4 + p35
+          }
+        }
+        store$f_eta2_eval <- out
+
+        out <- list()
+        for (alpha in 1:dim_num) {
+          out[[alpha]] <- list()
+          dalpha2 <- matrix(dens_list[[alpha]]$d2[[2]], ncol = n_k)
+          dalpha1 <- matrix(dens_list[[alpha]]$d1[[1]], ncol = n_k)
+
+          for (beta in 1:dim_num) {
+            dbeta1 <- matrix(dens_list[[beta]]$d1[[2]], ncol = n_k)
+            if (alpha == beta) {
+              d2 <- (dalpha2 + (dalpha1 * dbeta1))
+            } else {
+              d2 <- dalpha1 * dbeta1
+            }
+
+            p1 <- d2 * store$f_eval
+            p2 <- - rowsums(dbeta1 * expshift) * store$f_eval * dalpha1 / rs_expshift
+            p3 <- - (rowsums(d2 * expshift) * store$f_eval) / rs_expshift
+            p35 <- - rowsums(dalpha1 * expshift) * store$f_eval * dbeta1 / rs_expshift
+            p4 <- rowsums(dbeta1 * expshift) * rowsums(dalpha1 * expshift) * 2 * store$f_eval / rs_expshift^2
+            out[[alpha]][[beta]] <- (p1 + p2 + p3 + p4 + p35) * tau[beta]
+          }
+        }
+
+        store$f_eta_theta_eval <- out
+
+        out <- list()
+        for (alpha in 1:dim_num) {
+          out[[alpha]] <- list()
+          dalpha2 <- matrix(dens_list[[alpha]]$d2[[3]], ncol = n_k)
+          dalpha1 <- matrix(dens_list[[alpha]]$d1[[2]], ncol = n_k)
+
+          for (beta in 1:dim_num) {
+            dbeta1 <- matrix(dens_list[[beta]]$d1[[2]], ncol = n_k)
+            if (alpha == beta) {
+              d2 <- (dalpha2 + dalpha1**2)
+            } else {
+              d2 <-  dalpha1 * dbeta1
+            }
+            p1 <- d2 * store$f_eval
+            p2 <- - rowsums(dbeta1 * expshift) * store$f_eval * dalpha1 / rs_expshift
+            p3 <- - (rowsums(d2 * expshift) * store$f_eval) / rs_expshift
+            p35 <- - rowsums(dalpha1 * expshift) * store$f_eval * dbeta1 / rs_expshift
+            p4 <- rowsums(dbeta1 * expshift) * rowsums(dalpha1 * expshift) * 2 * store$f_eval / rs_expshift^2
+
+            if (alpha == beta) {
+              out[[alpha]][[beta]] = (p1 + p2 + p3 + p4 + p35) * tau[alpha]^2 + tau[alpha] * store$f_tau_eval[[alpha]]
+            } else {
+              out[[alpha]][[beta]] = (p1 + p2 + p3 + p4 + p35) * tau[alpha] * tau[beta]
+            }
+          }
+        }
+
+        store$f_theta2_eval <- out
+
+      }
+    }
+    return(store)
+  }
+
+  init_func <- function(densities) {
+    theta <- (apply(t(x), 1, (stats::var)))
+    y1 <- max.col(densities)
+    mustart <- (x[y1, ,drop=FALSE])
+    return(list(init_theta = log(theta), init_mu = mustart))
+  }
+
+  pen <- function(tau, deriv = 0) {
+    theta <- exp(tau)
+    v <- (apply(t(x), 1, (stats::var)))
+    pen <- sum((theta - v)^2)
+    pen_grad <- NULL
+    pen_hess <- NULL
+
+    if (deriv > 0) {
+      pen_grad <- theta * 2 * (theta - v)
+      if (length(pen_grad) == 1) {
+        pen_hess <- matrix((4 * theta - 2 * v) * theta)
+      } else {
+        pen_hess <- diag((4 * theta - 2 * v) * theta)
+      }
+    }
+
+    return(list(p = pen, pt = pen_grad, ptt = pen_hess))
+  }
+
+  name = "MVN"
+  return(structure(
+    eval = get_derivs,
+    init_func = init_func,
+    arg_list = list("x" = x, dim_num = dim_num),
+    neta = dim_num,
+    ntheta = dim_num,
+    theta_pen = pen,
+    num_weights = n_k,
+    name = name
+  ))
+}
+
+
 # ========================================
 #' Produces equal weights without any dependence on parameters
 #'

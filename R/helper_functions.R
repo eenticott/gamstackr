@@ -8,7 +8,7 @@
 #'
 #' @return Named list of derivatives
 eval_deriv <- function(inner_deriv_object, eta, theta, deriv = 0) {
-  store <- inner_deriv_object[["eval"]](eta, theta, deriv)
+  store <- inner_deriv_object(eta, theta, deriv)
 }
 
 #' Calculates eta for given design matrices and coefficients

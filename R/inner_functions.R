@@ -623,7 +623,7 @@ MVN_weights2 <- function(x, dim_num) {
 
   name = "MVN"
   return(structure(
-    eval = get_derivs,
+    get_derivs,
     init_func = init_func,
     arg_list = list("x" = x, dim_num = dim_num),
     neta = dim_num,

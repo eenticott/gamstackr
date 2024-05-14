@@ -615,9 +615,9 @@ MVN_weights2 <- function(x, dim_num) {
       store$f_tau_eval <- list()
       store$f_tau_eval[[i]] <- matrix(nrow = N, ncol = n_k)
 
-      store$f_eta2_eval[[i]] <- lapply(1:n, function(x) matrix(nrow = N, ncol = n_k))
-      store$f_theta2_eval[[i]] <- lapply(1:n, function(x) matrix(nrow = N, ncol = n_k))
-      store$f_eta_theta_eval[[i]] <- lapply(1:n, function(x) matrix(nrow = N, ncol = n_k))
+      store$f_eta2_eval[[i]] <- lapply(1:dim_num, function(x) matrix(nrow = N, ncol = n_k))
+      store$f_theta2_eval[[i]] <- lapply(1:dim_num, function(x) matrix(nrow = N, ncol = n_k))
+      store$f_eta_theta_eval[[i]] <- lapply(1:dim_num, function(x) matrix(nrow = N, ncol = n_k))
     }
     putstore(store)
     rm(store)

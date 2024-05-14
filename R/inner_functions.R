@@ -461,7 +461,9 @@ MVN_weights2 <- function(x, dim_num) {
   x <- t(x)
   store <- list()
   force(store)
-
+  assign(".store", NULL, envir = environment())
+  getstore <- function() get(".store")
+  putstore <- function(.x) assign(".store", .x, envir = environment(sys.function()))
 
   get_derivs <- function(eta, theta, deriv = 1) {
     if (is.list(eta)) {eta <- do.call("cbind", eta)}
@@ -477,7 +479,7 @@ MVN_weights2 <- function(x, dim_num) {
     log_dens <- matrix(rowsums(dens_matrix), ncol = n_k)
     shift_mat <- log_dens - matrixStats::rowMaxs(log_dens)
 
-    store <- list()
+    store <- getstore()
 
     expshift <- exp(shift_mat)
     rs_expshift <- rowsums(expshift)
@@ -510,6 +512,8 @@ MVN_weights2 <- function(x, dim_num) {
       store$f_eta_eval <- f_eta_out
       store$f_tau_eval <- f_tau_out
       store$f_theta_eval <- list_by_vector(f_tau_out, tau)
+
+      rm(f_eta_out, f_tau_out)
 
       if (deriv >= 2) {
         out <- list()
@@ -599,6 +603,24 @@ MVN_weights2 <- function(x, dim_num) {
     theta <- (apply(t(x), 1, (stats::var)))
     y1 <- max.col(densities)
     mustart <- (x[y1, ,drop=FALSE])
+    N <- nrow(densities)
+    # Initialise storage list
+    store$f_eta2_eval <- list()
+    store$f_theta2_eval <- list()
+    for (i in 1:dim_num) {
+      store$f_eta_eval <- list()
+      store$f_eta_eval[[i]] <- matrix(nrow = N, ncol = n_k)
+      store$f_theta_eval <- list()
+      store$f_theta_eval[[i]] <- matrix(nrow = N, ncol = n_k)
+      store$f_tau_eval <- list()
+      store$f_tau_eval[[i]] <- matrix(nrow = N, ncol = n_k)
+
+      store$f_eta2_eval[[i]] <- lapply(1:n, function(x) matrix(nrow = N, ncol = n_k))
+      store$f_theta2_eval[[i]] <- lapply(1:n, function(x) matrix(nrow = N, ncol = n_k))
+      store$f_eta_theta_eval[[i]] <- lapply(1:n, function(x) matrix(nrow = N, ncol = n_k))
+    }
+    putstore(store)
+    rm(store)
     return(list(init_theta = log(theta), init_mu = mustart))
   }
 

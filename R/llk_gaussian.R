@@ -1,5 +1,4 @@
 llk_gaussian <- function(y, param, deriv = 0, ...) {
-
   if (is.list(param) ) param <- do.call("cbind", param)
   if (is.vector(param)) param <- matrix(param, nrow = 1)
   if (ncol(param) != 2) stop("Wrong number of parameters provided")
@@ -56,5 +55,4 @@ llk_gaussian <- function(y, param, deriv = 0, ...) {
   }
 
   return( out )
-
 }

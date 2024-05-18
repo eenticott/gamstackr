@@ -719,7 +719,7 @@ MVN_weights3 <- function(x, dim_num) {
 
   get_derivs <- function(eta, theta, deriv = 1) {
     if (is.list(eta)) {eta <- do.call("cbind", eta)}
-    store <- get_derivs_cpp(eta, theta, deriv, n_k, dim_num)
+    store <- get_derivs_cpp(eta, theta, deriv, n_k, dim_num, x)
     return(store)
   }
 

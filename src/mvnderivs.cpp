@@ -1,6 +1,65 @@
 #include <RcppArmadillo.h>
 using namespace Rcpp;
 
+List llk_gaussian(NumericVector y, NumericMatrix param, int deriv = 0) {
+  if (param.ncol() != 2) {
+    stop("Wrong number of parameters provided");
+  }
+
+  int p = param.ncol();
+  NumericVector mu = param(_, 0);
+  NumericVector tau = param(_, 1);
+  NumericVector tau2 = tau * tau;
+  int n = y.size();
+
+  if (mu.size() == 1) {
+    mu = NumericVector(n, mu[0]);
+    tau = NumericVector(n, tau[0]);
+    tau2 = NumericVector(n, tau2[0]);
+  }
+
+  NumericVector ymu = y - mu;
+  NumericVector ymu2 = ymu * ymu;
+  NumericVector theta = 1 / tau2;
+  NumericVector d0 = -0.5 * log(2 * M_PI) + log(tau) - 0.5 * tau2 * ymu2;
+
+  List out;
+  out["d0"] = d0;
+
+  if (deriv > 0) {
+    NumericVector d1 = tau2 * ymu;
+    NumericVector d2 = (1 / tau - tau * ymu2) * -0.5 * pow(theta, -1.5);
+    out["d1"] = List::create(d1, d2);
+
+    if (deriv > 1) {
+      NumericVector d11 = -tau2;
+      NumericVector d12 = (2 * d1 / tau) * -0.5 * pow(theta, -1.5);
+      NumericVector d22 = ((-ymu2 - 1 / tau2) * 0.25 * pow(theta, -3)) + ((1 / tau - tau * ymu2) * 0.75 * pow(theta, -2.5));
+      out["d2"] = List::create(d11, d12, d22);
+
+      if (deriv > 2) {
+        NumericVector zeros(n, 0.0);
+        NumericVector d111 = zeros;
+        NumericVector d112 = -2 * tau;
+        NumericVector d122 = 2 * ymu;
+        NumericVector d222 = 2 / pow(tau, 3);
+        out["d3"] = List::create(d111, d112, d122, d222);
+
+        if (deriv > 3) {
+          NumericVector d1111 = zeros;
+          NumericVector d1112 = zeros;
+          NumericVector d1122 = NumericVector(n, -2.0);
+          NumericVector d1222 = zeros;
+          NumericVector d2222 = -6 / (tau2 * tau2);
+          out["d3"] = List::create(d1111, d1112, d1122, d1222, d2222);
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
 // Returns rowsums of a matrix as a vector
 NumericVector my_rowSums(const NumericMatrix& x) {
   int nr = x.nrow(), nc = x.ncol();
@@ -74,7 +133,7 @@ List get_derivs_cpp(NumericMatrix eta, NumericVector theta, int deriv, int n_k, 
   int N = eta.nrow();
   // Need to evaluate n_k * N * dim_num gaussian densities
   NumericMatrix dens_matrix(n_k * N, dim_num);
-  Function llk_gaussian("llk_gaussian");
+   // Function llk_gaussian("llk_gaussian");
   NumericMatrix log_dens(N, n_k);
 
   for (int n = 0; n < dim_num; n++) {
@@ -85,8 +144,10 @@ List get_derivs_cpp(NumericMatrix eta, NumericVector theta, int deriv, int n_k, 
         res[i * N + j] = x_n[i];
       }
     }
-
-    List llk = llk_gaussian(res, List::create(rep(eta(_, n), n_k), 1 / sqrt(tau[n])), 0);
+    NumericMatrix param(res.length(), 2);
+    param(_,0) = rep(eta(_, n), n_k);
+    param(_,1) = rep(1/sqrt(tau[n]), res.length());
+    List llk = llk_gaussian(res, param, 0);
     NumericVector d0 = llk["d0"];
     dens_matrix(_, n) = d0;
   }
@@ -139,7 +200,10 @@ List get_derivs_cpp(NumericMatrix eta, NumericVector theta, int deriv, int n_k, 
       }
 
       // Evaluate likelihood densities using given R function
-      List llk = llk_gaussian(res, List::create(rep(eta(_, n), n_k), 1 / sqrt(tau[n])), 2);
+      NumericMatrix param(res.length(), 2);
+      param(_,0) = rep(eta(_, n), n_k);
+      param(_,1) = rep(1/sqrt(tau[n]), res.length());
+      List llk = llk_gaussian(res, param, 2);
       // Store all outputs in a list
       List d1 = llk["d1"];
       List d2 = llk["d2"];
@@ -232,28 +296,16 @@ List get_derivs_cpp(NumericMatrix eta, NumericVector theta, int deriv, int n_k, 
             d2 = vec2mat(dalpha1 * dbeta1, N, n_k);
           }
           NumericMatrix p1 = vec2mat(d2 * f_out, N, n_k);
-          // Rcout << "At p1" << p1 << std::endl;
           NumericMatrix p2 = vec2mat(matbyvec(f_out, my_rowSums(vec2mat(dbeta1 * expshift, N, n_k))) *
             matbyvec(dalpha1, 1/ rs_expshift), N, n_k);
-          // Rcout << "At p2" << p2 << std::endl;
           NumericMatrix p3 = matbyvec(vec2mat(matbyvec(f_out,my_rowSums(vec2mat(d2*expshift, N, n_k))), N, n_k), 1/rs_expshift);
-          //Rcout << "At p3" << p3 << std::endl;
           NumericMatrix p35 = vec2mat(matbyvec(f_out, my_rowSums(vec2mat(dalpha1*expshift, N, n_k))) * matbyvec(dbeta1, 1/rs_expshift), N, n_k);
-          //vec2mat(vec2mat(my_rowSums(vec2mat(dalpha1*expshift, N, n_k)) * f_out, N, n_k) *
-          //matbyvec(dbeta1, 1/rs_expshift), N, n_k);
-
-          //Rcout << "At p35" << p35 << std::endl;
           NumericMatrix p4 = matbyvec(f_out, 2 * (my_rowSums(vec2mat(dbeta1*expshift, N, n_k)) *
             my_rowSums(vec2mat(dalpha1*expshift, N, n_k)) * 1/(rs_expshift*rs_expshift)));
-
-          //vec2mat(vec2mat(my_rowSums(vec2mat(dbeta1*expshift, N, n_k)) *
-          //  my_rowSums(vec2mat(dalpha1*expshift, N, n_k)), N, n_k) * 2 * matbyvec(f_out, 1/(rs_expshift*rs_expshift)), N, n_k);
-          //Rcout << "At p4" << p4 << std::endl;
 
           f_eta_theta_out_alpha[beta] = vec2mat(tau[beta] * (p1 - p2 - p3 + p4 - p35), N, n_k);
         }
         f_eta_theta_out[alpha] = f_eta_theta_out_alpha;
-        // Rcout << "Stored first" << std::endl;
       }
 
       store["f_eta_theta_eval"] = f_eta_theta_out;
@@ -272,23 +324,13 @@ List get_derivs_cpp(NumericMatrix eta, NumericVector theta, int deriv, int n_k, 
             d2 = vec2mat(dalpha1 * dbeta1, N, n_k);
           }
           NumericMatrix p1 = vec2mat(d2 * f_out, N, n_k);
-          // Rcout << "At p1" << p1 << std::endl;
           NumericMatrix p2 = vec2mat(matbyvec(f_out, my_rowSums(vec2mat(dbeta1 * expshift, N, n_k))) *
             matbyvec(dalpha1, 1/ rs_expshift), N, n_k);
-          // Rcout << "At p2" << p2 << std::endl;
           NumericMatrix p3 = matbyvec(vec2mat(matbyvec(f_out,my_rowSums(vec2mat(d2*expshift, N, n_k))), N, n_k), 1/rs_expshift);
-          //Rcout << "At p3" << p3 << std::endl;
           NumericMatrix p35 = vec2mat(matbyvec(f_out, my_rowSums(vec2mat(dalpha1*expshift, N, n_k))) * matbyvec(dbeta1, 1/rs_expshift), N, n_k);
-          //vec2mat(vec2mat(my_rowSums(vec2mat(dalpha1*expshift, N, n_k)) * f_out, N, n_k) *
-          //matbyvec(dbeta1, 1/rs_expshift), N, n_k);
-
-          //Rcout << "At p35" << p35 << std::endl;
           NumericMatrix p4 = matbyvec(f_out, 2 * (my_rowSums(vec2mat(dbeta1*expshift, N, n_k)) *
             my_rowSums(vec2mat(dalpha1*expshift, N, n_k)) * 1/(rs_expshift*rs_expshift)));
 
-          //vec2mat(vec2mat(my_rowSums(vec2mat(dbeta1*expshift, N, n_k)) *
-          //  my_rowSums(vec2mat(dalpha1*expshift, N, n_k)), N, n_k) * 2 * matbyvec(f_out, 1/(rs_expshift*rs_expshift)), N, n_k);
-          //Rcout << "At p4" << p4 << std::endl;
           if (alpha == beta) {
             NumericMatrix f1 = f_tau_out[alpha];
             NumericVector f2 = rep(tau[alpha], f1.length());
@@ -301,7 +343,6 @@ List get_derivs_cpp(NumericMatrix eta, NumericVector theta, int deriv, int n_k, 
           }
         }
         f_theta2_out[alpha] = f_theta2_out_alpha;
-        // Rcout << "Stored first" << std::endl;
       }
 
       store["f_theta2_eval"] = f_theta2_out;

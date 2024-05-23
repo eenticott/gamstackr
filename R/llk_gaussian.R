@@ -19,7 +19,6 @@ llk_gaussian <- function(y, param, deriv = 0, ...) {
   ymu2 <- ymu ^ 2
   theta = 1/tau2
   d0 <- - .5 * log(2 * pi) + log(tau) - .5 * tau2 * ymu2
-
   out <- list()
   out$d0 <- d0
 

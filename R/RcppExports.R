@@ -5,23 +5,7 @@ Cpp_rowSums <- function(x) {
     .Call(`_gamstackr_Cpp_rowSums`, x)
 }
 
-vec2mat <- function(vec, n, k) {
-    .Call(`_gamstackr_vec2mat`, vec, n, k)
-}
-
-rowMaxs <- function(x) {
-    .Call(`_gamstackr_rowMaxs`, x)
-}
-
-matbyvec <- function(x, v) {
-    .Call(`_gamstackr_matbyvec`, x, v)
-}
-
-mattakevec <- function(x, v) {
-    .Call(`_gamstackr_mattakevec`, x, v)
-}
-
-get_derivs_cpp <- function(eta, theta, deriv, n_k, dim_num, x) {
-    .Call(`_gamstackr_get_derivs_cpp`, eta, theta, deriv, n_k, dim_num, x)
+get_derivs_cpp <- function(eta, theta, deriv, n_k, dim_num, x, dens_matrix, store) {
+    .Call(`_gamstackr_get_derivs_cpp`, eta, theta, deriv, n_k, dim_num, x, dens_matrix, store)
 }
 

@@ -22,78 +22,28 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// vec2mat
-Rcpp::NumericMatrix vec2mat(Rcpp::NumericVector vec, int n, int k);
-RcppExport SEXP _gamstackr_vec2mat(SEXP vecSEXP, SEXP nSEXP, SEXP kSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type vec(vecSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< int >::type k(kSEXP);
-    rcpp_result_gen = Rcpp::wrap(vec2mat(vec, n, k));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rowMaxs
-NumericVector rowMaxs(NumericMatrix x);
-RcppExport SEXP _gamstackr_rowMaxs(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rowMaxs(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// matbyvec
-NumericMatrix matbyvec(NumericMatrix x, NumericVector v);
-RcppExport SEXP _gamstackr_matbyvec(SEXP xSEXP, SEXP vSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type v(vSEXP);
-    rcpp_result_gen = Rcpp::wrap(matbyvec(x, v));
-    return rcpp_result_gen;
-END_RCPP
-}
-// mattakevec
-NumericMatrix mattakevec(NumericMatrix x, NumericVector v);
-RcppExport SEXP _gamstackr_mattakevec(SEXP xSEXP, SEXP vSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type v(vSEXP);
-    rcpp_result_gen = Rcpp::wrap(mattakevec(x, v));
-    return rcpp_result_gen;
-END_RCPP
-}
 // get_derivs_cpp
-List get_derivs_cpp(NumericMatrix eta, NumericVector theta, int deriv, int n_k, int dim_num, NumericMatrix x);
-RcppExport SEXP _gamstackr_get_derivs_cpp(SEXP etaSEXP, SEXP thetaSEXP, SEXP derivSEXP, SEXP n_kSEXP, SEXP dim_numSEXP, SEXP xSEXP) {
+List get_derivs_cpp(arma::mat& eta, arma::vec& theta, int deriv, int n_k, int dim_num, arma::mat& x, arma::mat& dens_matrix, List store);
+RcppExport SEXP _gamstackr_get_derivs_cpp(SEXP etaSEXP, SEXP thetaSEXP, SEXP derivSEXP, SEXP n_kSEXP, SEXP dim_numSEXP, SEXP xSEXP, SEXP dens_matrixSEXP, SEXP storeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type eta(etaSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< arma::vec& >::type theta(thetaSEXP);
     Rcpp::traits::input_parameter< int >::type deriv(derivSEXP);
     Rcpp::traits::input_parameter< int >::type n_k(n_kSEXP);
     Rcpp::traits::input_parameter< int >::type dim_num(dim_numSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_derivs_cpp(eta, theta, deriv, n_k, dim_num, x));
+    Rcpp::traits::input_parameter< arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type dens_matrix(dens_matrixSEXP);
+    Rcpp::traits::input_parameter< List >::type store(storeSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_derivs_cpp(eta, theta, deriv, n_k, dim_num, x, dens_matrix, store));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
     {"_gamstackr_Cpp_rowSums", (DL_FUNC) &_gamstackr_Cpp_rowSums, 1},
-    {"_gamstackr_vec2mat", (DL_FUNC) &_gamstackr_vec2mat, 3},
-    {"_gamstackr_rowMaxs", (DL_FUNC) &_gamstackr_rowMaxs, 1},
-    {"_gamstackr_matbyvec", (DL_FUNC) &_gamstackr_matbyvec, 2},
-    {"_gamstackr_mattakevec", (DL_FUNC) &_gamstackr_mattakevec, 2},
-    {"_gamstackr_get_derivs_cpp", (DL_FUNC) &_gamstackr_get_derivs_cpp, 6},
+    {"_gamstackr_get_derivs_cpp", (DL_FUNC) &_gamstackr_get_derivs_cpp, 8},
     {NULL, NULL, 0}
 };
 

@@ -31,7 +31,7 @@ List llk_gaussian(arma::vec y, arma::mat param, int deriv = 0) {
 
     if (deriv > 1) {
       arma::vec d11 = -tau2;
-      arma::vec d12 = (2 * d1 % tau) % (-0.5 * pow(theta, -1.5));
+      arma::vec d12 = (2 * d1 / tau) % (-0.5 * pow(theta, -1.5));
       arma::vec d22 = ((-ymu2 - 1 / tau2) % (0.25 * pow(theta, -3))) + ((1 / tau - tau % ymu2) % (0.75 * pow(theta, -2.5)));
       out["d2"] = List::create(d11, d12, d22);
 

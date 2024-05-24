@@ -834,6 +834,7 @@ MVN_weights4 <- function(x, dim_num) {
     store$f_eta_eval <- list()
     store$f_theta_eval <- list()
     store$f_tau_eval <- list()
+    store$f_eval <- matrix(nrow = N, ncol = n_k)
     putdens(matrix(nrow=N*n_k, ncol=dim_num))
     for (i in 1:dim_num) {
       store$f_eta_eval[[i]] <- matrix(nrow = N, ncol = n_k)

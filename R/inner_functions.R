@@ -805,7 +805,6 @@ MVN_weights4 <- function(x, dim_num) {
   force(x)
   n_k <- ncol(x)
   dim_num <- nrow(x)
-  N*n_k
   x <- t(x)
   store <- list()
   force(store)

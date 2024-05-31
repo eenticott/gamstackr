@@ -877,7 +877,9 @@ MVN_weights4 <- function(x, dim_num) {
     ntheta = dim_num,
     theta_pen = pen,
     num_weights = n_k,
-    name = name
+    name = name,
+    putdens = putdens,
+    putstore = putstore
   ))
 }
 

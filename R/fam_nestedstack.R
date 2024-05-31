@@ -749,7 +749,15 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
 
     inner_weights <- list()
     for (k in 1:length(list_of_inner_functions)) {
-      attr(list_of_inner_functions[[k]], "init_func")(list_of_densities[[k]])
+      if (attr(list_of_inner_functions[[k]], "name") == "MVN") {
+        n_k <- attr(list_of_inner_functions[[k]], "num_weights")
+        dim_num <- attr(list_of_inner_functions[[k]], "neta")
+        tmp_dens <- matrix(NA, nrow = N*n_k, ncol = dim_num)
+        tmp_store <- list()
+        tmp_store$f_eval <- matrix(NA, nrow = N, ncol = n_k)
+        attr(list_of_inner_functions[[k]], "putdens")(tmp_dens)
+        attr(list_of_inner_functions[[k]], "putstore")(tmp_store)
+      }
       inner_weights[[k]] <- .internals()[["eval_deriv"]](list_of_inner_functions[[k]], list_of_etaT[[k]], list_of_theta[[k]], deriv = 0)
     }
 

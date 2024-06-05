@@ -153,7 +153,7 @@ ordinal <- function(num_weights) { # nolint
 
   get_derivs <- function(eta, tau, deriv) {
     eta <- eta[[1]] # eta is always a list with one element
-    store <- getstore()
+    store <- list()
     tau <- c(stats::qlogis(1/num_weights), tau)
     theta <- c(tau[1], tau[1] + cumsum(exp(tau[-1])))
     store$f_eval <- f(eta, theta)
@@ -210,29 +210,6 @@ ordinal <- function(num_weights) { # nolint
     if (num_weights == 2) {
       init_tau <- NULL
     }
-
-    # Store deriv sizes
-    N <- nrow(densities)
-    # Initialise storage list
-    store$f_eta2_eval <- list()
-    store$f_theta2_eval <- list()
-    store$f_eta_eval <- list()
-    store$f_theta_eval <- list()
-    store$f_tau_eval <- list()
-
-    for (i in 1:neta) {
-      store$f_eta_eval[[i]] <- matrix(nrow = N, ncol = num_weights)
-      store$f_eta2_eval[[i]] <-  lapply(1:neta, function(x) matrix(nrow = N, ncol = num_weights))
-      store$f_eta_theta_eval[[i]] <-  lapply(1:ntheta, function(x) matrix(nrow = N, ncol = num_weights))
-    }
-
-    for (i in 1:ntheta) {
-      store$f_theta_eval[[i]] <- matrix(nrow = N, ncol = num_weights)
-      store$f_theta2_eval[[i]] <- lapply(1:dim_num, function(x) matrix(nrow = N, ncol = num_weights))
-    }
-
-    putstore(store)
-    rm(store)
     return(list(init_mu = matrix(mustart), init_theta = init_tau))
   }
 

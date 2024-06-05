@@ -18,8 +18,8 @@
 # stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5)), list(ordinal(5)))
 # stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5), cbind(den1, den2, den3)), list(ordinal(5), ordinal(3)))
 # stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5)), list(MVN_weights(x=matrix(c(1,2,3,4,5),nrow=1))))
-# stack <- gam(list(Sepal.Length ~ Species + Sepal.Width, ~Species, ~Species), data = iris, family = stack_fam)
-
+# stack <- gam(list(Sepal.Length ~ Species + Sepal.Width), data = iris, family = stack_fam)
+#
 #
 # #stack <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species), data = iris, family = stack_fam)
 #
@@ -53,7 +53,7 @@
 #                   list(MVN_weights(x=matrix(c(1,2,3),nrow=2,ncol=3))),
 #                   list_of_densities = list(exp(cbind(den1, den2, den3))))$ll
 # }
-
+#
 # dv_est <- numDeriv::hessian(deriv_check, c(1,1,1,1,1,2))
 #
 # dv_calc$llbb/dv_est

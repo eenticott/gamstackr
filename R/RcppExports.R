@@ -2,6 +2,10 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 Cpp_rowSums <- function(x) {
-    .Call('_gamstackr_Cpp_rowSums', PACKAGE = 'gamstackr', x)
+    .Call(`_gamstackr_Cpp_rowSums`, x)
+}
+
+get_derivs_cpp <- function(eta, theta, deriv, n_k, dim_num, x, dens_matrix, store) {
+    .Call(`_gamstackr_get_derivs_cpp`, eta, theta, deriv, n_k, dim_num, x, dens_matrix, store)
 }
 

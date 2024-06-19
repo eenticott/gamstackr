@@ -1,5 +1,4 @@
 llk_gaussian <- function(y, param, deriv = 0, ...) {
-
   if (is.list(param) ) param <- do.call("cbind", param)
   if (is.vector(param)) param <- matrix(param, nrow = 1)
   if (ncol(param) != 2) stop("Wrong number of parameters provided")
@@ -20,7 +19,6 @@ llk_gaussian <- function(y, param, deriv = 0, ...) {
   ymu2 <- ymu ^ 2
   theta = 1/tau2
   d0 <- - .5 * log(2 * pi) + log(tau) - .5 * tau2 * ymu2
-
   out <- list()
   out$d0 <- d0
 
@@ -56,5 +54,4 @@ llk_gaussian <- function(y, param, deriv = 0, ...) {
   }
 
   return( out )
-
 }

@@ -683,6 +683,205 @@ MVN_weights2 <- function(x, dim_num) {
   ))
 }
 
+# Multivariate normal inner functions ------------------------------------------
+#' Produces an object containing derivatives for multivariate normal stacking
+#'
+#' @param x Array of (dim_num, n_k) specifying locations for each of the models
+#' @param dim_num Integer specifying number of dimensions required
+#'
+#' @return Object containing derivatives for multivariate normal stacking
+#' @export
+#'
+#' @examples
+#' x <- matrix(c(1:6), nrow = 3)
+#' MVN_weights(x, 3)
+MVN_weights3 <- function(x, dim_num) {
+  # Input
+  # -----
+  # x - Array of (dim_num, n_k) specifying locations for each of the models
+  # Suppose we have N data points
+  # n_k inner functions
+  # inner functions f_j depend on:
+  #   etaT_1,..., etaT_p
+  #   etaT denotes tilde(eta)
+  #   theta_1,..., theta_q
+  force(x)
+  n_k <- ncol(x)
+  dim_num <- nrow(x)
+
+  x <- t(x)
+  store <- list()
+  force(store)
+  assign(".store", NULL, envir = environment())
+  getstore <- function() get(".store")
+  putstore <- function(.x) assign(".store", .x, envir = environment(sys.function()))
+
+  get_derivs <- function(eta, theta, deriv = 1) {
+    if (is.list(eta)) {eta <- do.call("cbind", eta)}
+    store <- get_derivs_cpp(eta, theta, deriv, n_k, dim_num, x)
+    return(store)
+  }
+
+  init_func <- function(densities) {
+    theta <- (apply(t(x), 1, (stats::var)))
+    y1 <- max.col(densities)
+    mustart <- (x[y1, ,drop=FALSE])
+    N <- nrow(densities)
+    # Initialise storage list
+    store$f_eta2_eval <- list()
+    store$f_theta2_eval <- list()
+    store$f_eta_eval <- list()
+    store$f_theta_eval <- list()
+    store$f_tau_eval <- list()
+
+    for (i in 1:dim_num) {
+      store$f_eta_eval[[i]] <- matrix(nrow = N, ncol = n_k)
+      store$f_theta_eval[[i]] <- matrix(nrow = N, ncol = n_k)
+      store$f_tau_eval[[i]] <- matrix(nrow = N, ncol = n_k)
+      store$f_eta2_eval[[i]] <- lapply(1:dim_num, function(x) matrix(nrow = N, ncol = n_k))
+      store$f_theta2_eval[[i]] <- lapply(1:dim_num, function(x) matrix(nrow = N, ncol = n_k))
+      store$f_eta_theta_eval[[i]] <- lapply(1:dim_num, function(x) matrix(nrow = N, ncol = n_k))
+    }
+    putstore(store)
+    rm(store)
+    return(list(init_theta = log(theta), init_mu = mustart))
+  }
+
+  pen <- function(tau, deriv = 0) {
+    theta <- exp(tau)
+    v <- (apply(t(x), 1, (stats::var)))
+    pen <- sum((theta - v)^2)
+    pen_grad <- NULL
+    pen_hess <- NULL
+
+    if (deriv > 0) {
+      pen_grad <- theta * 2 * (theta - v)
+      if (length(pen_grad) == 1) {
+        pen_hess <- matrix((4 * theta - 2 * v) * theta)
+      } else {
+        pen_hess <- diag((4 * theta - 2 * v) * theta)
+      }
+    }
+
+    return(list(p = pen, pt = pen_grad, ptt = pen_hess))
+  }
+
+  name = "MVN"
+  return(structure(
+    get_derivs,
+    init_func = init_func,
+    arg_list = list("x" = x, dim_num = dim_num),
+    neta = dim_num,
+    ntheta = dim_num,
+    theta_pen = pen,
+    num_weights = n_k,
+    name = name
+  ))
+}
+
+# Multivariate normal inner functions ------------------------------------------
+#' Produces an object containing derivatives for multivariate normal stacking
+#'
+#' @param x Array of (dim_num, n_k) specifying locations for each of the models
+#' @param dim_num Integer specifying number of dimensions required
+#'
+#' @return Object containing derivatives for multivariate normal stacking
+#' @export
+#'
+#' @examples
+#' x <- matrix(c(1:6), nrow = 3)
+#' MVN_weights(x, 3)
+MVN_weights4 <- function(x, dim_num) {
+  # Input
+  # -----
+  # x - Array of (dim_num, n_k) specifying locations for each of the models
+  # Suppose we have N data points
+  # n_k inner functions
+  # inner functions f_j depend on:
+  #   etaT_1,..., etaT_p
+  #   etaT denotes tilde(eta)
+  #   theta_1,..., theta_q
+  force(x)
+  n_k <- ncol(x)
+  dim_num <- nrow(x)
+  x <- t(x)
+  store <- list()
+  force(store)
+  assign(".store", NULL, envir = environment())
+  getstore <- function() get(".store")
+  putstore <- function(.x) assign(".store", .x, envir = environment(sys.function()))
+
+  assign(".dens_mat", NULL, envir = environment())
+  getdens <- function() get(".dens_mat")
+  putdens <- function(.x) assign(".dens_mat", .x, envir = environment(sys.function()))
+
+  get_derivs <- function(eta, theta, deriv = 1) {
+    if (is.list(eta)) {eta <- do.call("cbind", eta)}
+    store <- getstore()
+    get_derivs_cpp(eta, theta, deriv, n_k, dim_num, x, getdens(), store)
+    return(store)
+  }
+
+  init_func <- function(densities) {
+    theta <- (apply(t(x), 1, (stats::var)))
+    y1 <- max.col(densities)
+    mustart <- (x[y1, ,drop=FALSE])
+    N <- nrow(densities)
+    # Initialise storage list
+    store$f_eta2_eval <- list()
+    store$f_theta2_eval <- list()
+    store$f_eta_eval <- list()
+    store$f_theta_eval <- list()
+    store$f_tau_eval <- list()
+    store$f_eval <- matrix(nrow = N, ncol = n_k)
+    putdens(matrix(nrow=N*n_k, ncol=dim_num))
+    for (i in 1:dim_num) {
+      store$f_eta_eval[[i]] <- matrix(nrow = N, ncol = n_k)
+      store$f_theta_eval[[i]] <- matrix(nrow = N, ncol = n_k)
+      store$f_tau_eval[[i]] <- matrix(nrow = N, ncol = n_k)
+      store$f_eta2_eval[[i]] <- lapply(1:dim_num, function(x) matrix(nrow = N, ncol = n_k))
+      store$f_theta2_eval[[i]] <- lapply(1:dim_num, function(x) matrix(nrow = N, ncol = n_k))
+      store$f_eta_theta_eval[[i]] <- lapply(1:dim_num, function(x) matrix(nrow = N, ncol = n_k))
+    }
+    putstore(store)
+    rm(store)
+    return(list(init_theta = log(theta), init_mu = mustart))
+  }
+
+  pen <- function(tau, deriv = 0) {
+    theta <- exp(tau)
+    v <- (apply(t(x), 1, (stats::var)))
+    pen <- sum((theta - v)^2)
+    pen_grad <- NULL
+    pen_hess <- NULL
+
+    if (deriv > 0) {
+      pen_grad <- theta * 2 * (theta - v)
+      if (length(pen_grad) == 1) {
+        pen_hess <- matrix((4 * theta - 2 * v) * theta)
+      } else {
+        pen_hess <- diag((4 * theta - 2 * v) * theta)
+      }
+    }
+
+    return(list(p = pen, pt = pen_grad, ptt = pen_hess))
+  }
+
+  name = "MVN"
+  return(structure(
+    get_derivs,
+    init_func = init_func,
+    arg_list = list("x" = x, dim_num = dim_num),
+    neta = dim_num,
+    ntheta = dim_num,
+    theta_pen = pen,
+    num_weights = n_k,
+    name = name,
+    putdens = putdens,
+    putstore = putstore
+  ))
+}
+
 
 # ========================================
 #' Produces equal weights without any dependence on parameters

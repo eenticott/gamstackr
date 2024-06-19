@@ -500,7 +500,6 @@ MVN_weights2 <- function(x, dim_num) {
       }
 
       detas <- sapply(dens_list, "[[", "d1")[1, ]
-
       dtaus <- sapply(dens_list, "[[", "d1")[2, ]
 
       f_eta_out <- list()

@@ -3,7 +3,7 @@ get_derivatives <- function(list_of_beta,
                             sigma2,
                             y,
                             predictions,
-                            derivs = 1,) {
+                            derivs = 1) {
   K <- ncol(predictions)
   mu <- predictions
   sigma2 <- exp(sigma2)

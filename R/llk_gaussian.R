@@ -1,4 +1,5 @@
 llk_gaussian <- function(y, param, deriv = 0, ...) {
+  # derivatives are sigma2 not tau
   if (is.list(param) ) param <- do.call("cbind", param)
   if (is.vector(param)) param <- matrix(param, nrow = 1)
   if (ncol(param) != 2) stop("Wrong number of parameters provided")

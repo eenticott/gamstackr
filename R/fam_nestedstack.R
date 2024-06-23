@@ -346,7 +346,6 @@ NestedStack <- function(logP, inner_funcs, RidgePen = 1e-5) {
       }
 
 
-
       # INITIAL BETATS
       list_of_X_etaT <- list()
       list_of_betaT <- list()

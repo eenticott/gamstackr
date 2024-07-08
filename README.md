@@ -5,7 +5,7 @@ at hourly data from 2018 - 2022. Price data can be found at
 which is available at part of the eco2mix data set found here:
 `https://odre.opendatasoft.com/explore/dataset/eco2mix-regional-tr`/.
 
-![](man/figures/unnamed-chunk-1-1.png)
+![](man/figures/README/unnamed-chunk-1-1.png)
 
 ## *gamstackr* workflow
 
@@ -52,7 +52,7 @@ you wish to split into windows.
     df_slide <- slide_window(price_data_H)
     plot_windows(df_slide)
 
-![](man/figures/unnamed-chunk-2-1.png)
+![](man/figures/README/unnamed-chunk-2-1.png)
 
 Sliding windows keep the length of data the same as you move through
 time. This is useful when older data becomes less relevant as you move
@@ -62,7 +62,7 @@ through time.
     df_expand <- expand_window(price_data_H)
     plot_windows(df_expand)
 
-![](man/figures/unnamed-chunk-3-1.png)
+![](man/figures/README/unnamed-chunk-3-1.png)
 
 Expanding windows keep adding more data to your training set, this is
 useful when you don’t expect the trend to change.
@@ -266,7 +266,7 @@ Our fitted stack contains all the evaluated weights.
     stack_idx <- rownames(stack_weights)
     plot(price_data_H[stack_idx, "VMA"], stack_weights[,1])
 
-![](man/figures/unnamed-chunk-15-1.png)
+![](man/figures/README/unnamed-chunk-15-1.png)
 
     metrics( price_data_H[stack_idx, "SpotPrice"], rowSums(stack_weights * preds[stack_idx,]))
 
@@ -375,7 +375,7 @@ list of the inner functions as before. `id` simply assigns a weight of
     with(price_data_H[stack_idx, ], plot(Date, SpotPrice, type = "l"))
     lines(price_data_H[stack_idx, "Date"], rowSums(stack_weights * preds[stack_idx,]), col = "red")
 
-![](man/figures/unnamed-chunk-23-1.png)
+![](man/figures/README/unnamed-chunk-23-1.png)
 
     W <- do.call("rbind", st_out)
     W_dat <- data.frame(Date = price_data_H[rownames(W), "Date"])
@@ -384,4 +384,4 @@ list of the inner functions as before. `id` simply assigns a weight of
     ggplot(data=W_dat, aes(x=Date, y = value, fill=variable, group = variable)) +
       geom_area() + scale_fill_brewer(palette="Set2")
 
-![](man/figures/unnamed-chunk-24-1.png)
+![](man/figures/README/unnamed-chunk-24-1.png)

@@ -1,3 +1,52 @@
+    ## Loading required package: nlme
+
+    ## This is mgcv 1.8-41. For overview type 'help("mgcv-package")'.
+
+    ## Loading required package: timechange
+
+    ## 
+    ## Attaching package: 'lubridate'
+
+    ## The following objects are masked from 'package:base':
+    ## 
+    ##     date, intersect, setdiff, union
+
+    ## 
+    ## Attaching package: 'dplyr'
+
+    ## The following object is masked from 'package:nlme':
+    ## 
+    ##     collapse
+
+    ## The following objects are masked from 'package:stats':
+    ## 
+    ##     filter, lag
+
+    ## The following objects are masked from 'package:base':
+    ## 
+    ##     intersect, setdiff, setequal, union
+
+    ## 
+    ## Attaching package: 'zoo'
+
+    ## The following objects are masked from 'package:base':
+    ## 
+    ##     as.Date, as.Date.numeric
+
+    ## 
+    ## Attaching package: 'gamstackr'
+
+    ## The following object is masked from 'package:dplyr':
+    ## 
+    ##     id
+
+    ## 
+    ## Attaching package: 'xgboost'
+
+    ## The following object is masked from 'package:dplyr':
+    ## 
+    ##     slice
+
 We will demonstrate how to use the `gamstackr` package through a short
 example applied to day-ahead electricity spot price forecasting. We look
 at hourly data from 2018 - 2022. Price data can be found at
@@ -5,7 +54,7 @@ at hourly data from 2018 - 2022. Price data can be found at
 which is available at part of the eco2mix data set found here:
 `https://odre.opendatasoft.com/explore/dataset/eco2mix-regional-tr`/.
 
-![](man/figures/README/unnamed-chunk-1-1.png)
+![](forecasting_notebook_files/figure-markdown_strict/unnamed-chunk-1-1.png)
 
 ## *gamstackr* workflow
 
@@ -52,7 +101,7 @@ you wish to split into windows.
     df_slide <- slide_window(price_data_H)
     plot_windows(df_slide)
 
-![](man/figures/README/unnamed-chunk-2-1.png)
+![](forecasting_notebook_files/figure-markdown_strict/unnamed-chunk-2-1.png)
 
 Sliding windows keep the length of data the same as you move through
 time. This is useful when older data becomes less relevant as you move
@@ -62,7 +111,7 @@ through time.
     df_expand <- expand_window(price_data_H)
     plot_windows(df_expand)
 
-![](man/figures/README/unnamed-chunk-3-1.png)
+![](forecasting_notebook_files/figure-markdown_strict/unnamed-chunk-3-1.png)
 
 Expanding windows keep adding more data to your training set, this is
 useful when you don’t expect the trend to change.
@@ -125,7 +174,9 @@ each fitted model object and/or the evaluated density.
 
     exp1_out <- evaluate_expert(expert1, slide_window, price_data_H, type = c("model", "predict", "density"))
 
-Then we can retrieve relevant information from our list of outputs. Predictions
+    ##   |                                                          |                                                  |   0%  |                                                          |=                                                 |   2%  |                                                          |==                                                |   5%  |                                                          |====                                              |   8%  |                                                          |=====                                             |  10%  |                                                          |======                                            |  12%  |                                                          |========                                          |  15%  |                                                          |=========                                         |  18%  |                                                          |==========                                        |  20%  |                                                          |===========                                       |  22%  |                                                          |============                                      |  25%  |                                                          |==============                                    |  28%  |                                                          |===============                                   |  30%  |                                                          |================                                  |  32%  |                                                          |==================                                |  35%  |                                                          |===================                               |  38%  |                                                          |====================                              |  40%  |                                                          |=====================                             |  42%  |                                                          |======================                            |  45%  |                                                          |========================                          |  48%  |                                                          |=========================                         |  50%  |                                                          |==========================                        |  52%  |                                                          |============================                      |  55%  |                                                          |=============================                     |  58%  |                                                          |==============================                    |  60%  |                                                          |===============================                   |  62%  |                                                          |================================                  |  65%  |                                                          |==================================                |  68%  |                                                          |===================================               |  70%  |                                                          |====================================              |  72%  |                                                          |======================================            |  75%  |                                                          |=======================================           |  78%  |                                                          |========================================          |  80%  |                                                          |=========================================         |  82%  |                                                          |==========================================        |  85%  |                                                          |============================================      |  88%  |                                                          |=============================================     |  90%  |                                                          |==============================================    |  92%  |                                                          |================================================  |  95%  |                                                          |================================================= |  98%  |                                                          |==================================================| 100%
+
+Then we can retrieve relevant information from our list of outputs.
 
     exp1_out$preds[1:3] # predictions for first 3 test windows
 
@@ -141,8 +192,6 @@ Then we can retrieve relevant information from our list of outputs. Predictions
     ##       99      100      101      102      103      104      105 
     ## 41.25832 34.98615 26.87001 31.35441 31.53950 17.39344 10.69683
 
-Densities
-
     exp1_out$dens[1:3] # evaluated density on first 3 test windows
 
     ## [[1]]
@@ -153,8 +202,6 @@ Densities
     ## 
     ## [[3]]
     ## [1] -3.065358 -2.810018 -3.720443 -2.957988 -2.877830 -2.965067 -3.657297
-
-Fitted model
 
     exp1_out$model # final fitted model
 
@@ -194,6 +241,13 @@ We can fit multiple experts at once with `evaluate_expert`, simply enter
 them as a list.
 
     experts_out <- evaluate_expert(list(expert1, expert2, expert3), slide_window, price_data_H, type = c("predict", "density"))
+
+    ##   |                                                          |                                                  |   0%  |                                                          |=                                                 |   2%  |                                                          |==                                                |   5%  |                                                          |====                                              |   8%  |                                                          |=====                                             |  10%  |                                                          |======                                            |  12%  |                                                          |========                                          |  15%  |                                                          |=========                                         |  18%  |                                                          |==========                                        |  20%  |                                                          |===========                                       |  22%  |                                                          |============                                      |  25%  |                                                          |==============                                    |  28%  |                                                          |===============                                   |  30%  |                                                          |================                                  |  32%  |                                                          |==================                                |  35%  |                                                          |===================                               |  38%  |                                                          |====================                              |  40%  |                                                          |=====================                             |  42%  |                                                          |======================                            |  45%  |                                                          |========================                          |  48%  |                                                          |=========================                         |  50%  |                                                          |==========================                        |  52%  |                                                          |============================                      |  55%  |                                                          |=============================                     |  58%  |                                                          |==============================                    |  60%  |                                                          |===============================                   |  62%  |                                                          |================================                  |  65%  |                                                          |==================================                |  68%  |                                                          |===================================               |  70%  |                                                          |====================================              |  72%  |                                                          |======================================            |  75%  |                                                          |=======================================           |  78%  |                                                          |========================================          |  80%  |                                                          |=========================================         |  82%  |                                                          |==========================================        |  85%  |                                                          |============================================      |  88%  |                                                          |=============================================     |  90%  |                                                          |==============================================    |  92%  |                                                          |================================================  |  95%  |                                                          |================================================= |  98%  |                                                          |==================================================| 100%
+    ## ----- Expert 1 completed ----- 
+    ##   |                                                          |                                                  |   0%  |                                                          |=                                                 |   2%  |                                                          |==                                                |   5%  |                                                          |====                                              |   8%  |                                                          |=====                                             |  10%  |                                                          |======                                            |  12%  |                                                          |========                                          |  15%  |                                                          |=========                                         |  18%  |                                                          |==========                                        |  20%  |                                                          |===========                                       |  22%  |                                                          |============                                      |  25%  |                                                          |==============                                    |  28%  |                                                          |===============                                   |  30%  |                                                          |================                                  |  32%  |                                                          |==================                                |  35%  |                                                          |===================                               |  38%  |                                                          |====================                              |  40%  |                                                          |=====================                             |  42%  |                                                          |======================                            |  45%  |                                                          |========================                          |  48%  |                                                          |=========================                         |  50%  |                                                          |==========================                        |  52%  |                                                          |============================                      |  55%  |                                                          |=============================                     |  58%  |                                                          |==============================                    |  60%  |                                                          |===============================                   |  62%  |                                                          |================================                  |  65%  |                                                          |==================================                |  68%  |                                                          |===================================               |  70%  |                                                          |====================================              |  72%  |                                                          |======================================            |  75%  |                                                          |=======================================           |  78%  |                                                          |========================================          |  80%  |                                                          |=========================================         |  82%  |                                                          |==========================================        |  85%  |                                                          |============================================      |  88%  |                                                          |=============================================     |  90%  |                                                          |==============================================    |  92%  |                                                          |================================================  |  95%  |                                                          |================================================= |  98%  |                                                          |==================================================| 100%
+    ## ----- Expert 2 completed ----- 
+    ##   |                                                          |                                                  |   0%  |                                                          |=                                                 |   2%  |                                                          |==                                                |   5%  |                                                          |====                                              |   8%  |                                                          |=====                                             |  10%  |                                                          |======                                            |  12%  |                                                          |========                                          |  15%  |                                                          |=========                                         |  18%  |                                                          |==========                                        |  20%  |                                                          |===========                                       |  22%  |                                                          |============                                      |  25%  |                                                          |==============                                    |  28%  |                                                          |===============                                   |  30%  |                                                          |================                                  |  32%  |                                                          |==================                                |  35%  |                                                          |===================                               |  38%  |                                                          |====================                              |  40%  |                                                          |=====================                             |  42%  |                                                          |======================                            |  45%  |                                                          |========================                          |  48%  |                                                          |=========================                         |  50%  |                                                          |==========================                        |  52%  |                                                          |============================                      |  55%  |                                                          |=============================                     |  58%  |                                                          |==============================                    |  60%  |                                                          |===============================                   |  62%  |                                                          |================================                  |  65%  |                                                          |==================================                |  68%  |                                                          |===================================               |  70%  |                                                          |====================================              |  72%  |                                                          |======================================            |  75%  |                                                          |=======================================           |  78%  |                                                          |========================================          |  80%  |                                                          |=========================================         |  82%  |                                                          |==========================================        |  85%  |                                                          |============================================      |  88%  |                                                          |=============================================     |  90%  |                                                          |==============================================    |  92%  |                                                          |================================================  |  95%  |                                                          |================================================= |  98%  |                                                          |==================================================| 100%
+    ## ----- Expert 3 completed -----
 
 `experts_out` is a list of lists, where the top level contains each of
 the evaluated experts and the inner level contains the
@@ -245,7 +299,7 @@ to fit to out of sample density to avoid overfitting.
     stack_dat <- price_data_H[rownames(preds),]
 
 We need to give the stacker a formula, a list of out of sample densities
-and a window object.
+and
 
     stack <- evaluate_stack(stacker,
                    formula = list(SpotPrice ~ VMA),
@@ -253,13 +307,15 @@ and a window object.
                    stack_data = stack_dat, 
                    list_of_densities = list(dens))
 
+    ##   |                                                          |                                                  |   0%  |                                                          |==                                                |   4%  |                                                          |====                                              |   7%  |                                                          |=====                                             |  11%  |                                                          |=======                                           |  14%  |                                                          |=========                                         |  18%  |                                                          |===========                                       |  21%  |                                                          |============                                      |  25%  |                                                          |==============                                    |  29%  |                                                          |================                                  |  32%  |                                                          |==================                                |  36%  |                                                          |====================                              |  39%  |                                                          |=====================                             |  43%  |                                                          |=======================                           |  46%  |                                                          |=========================                         |  50%  |                                                          |===========================                       |  54%  |                                                          |=============================                     |  57%  |                                                          |==============================                    |  61%  |                                                          |================================                  |  64%  |                                                          |==================================                |  68%  |                                                          |====================================              |  71%  |                                                          |======================================            |  75%  |                                                          |=======================================           |  79%  |                                                          |=========================================         |  82%  |                                                          |===========================================       |  86%  |                                                          |=============================================     |  89%  |                                                          |==============================================    |  93%  |                                                          |================================================  |  96%  |                                                          |==================================================| 100%
+
 Our fitted stack contains all the evaluated weights.
 
     stack_weights <- do.call("rbind", stack)
     stack_idx <- rownames(stack_weights)
     plot(price_data_H[stack_idx, "VMA"], stack_weights[,1])
 
-![](man/figures/README/unnamed-chunk-15-1.png)
+![](forecasting_notebook_files/figure-markdown_strict/unnamed-chunk-15-1.png)
 
     metrics( price_data_H[stack_idx, "SpotPrice"], rowSums(stack_weights * preds[stack_idx,]))
 
@@ -368,7 +424,7 @@ list of the inner functions as before. `id` simply assigns a weight of
     with(price_data_H[stack_idx, ], plot(Date, SpotPrice, type = "l"))
     lines(price_data_H[stack_idx, "Date"], rowSums(stack_weights * preds[stack_idx,]), col = "red")
 
-![](man/figures/README/unnamed-chunk-23-1.png)
+![](forecasting_notebook_files/figure-markdown_strict/unnamed-chunk-23-1.png)
 
     W <- do.call("rbind", st_out)
     W_dat <- data.frame(Date = price_data_H[rownames(W), "Date"])
@@ -377,4 +433,4 @@ list of the inner functions as before. `id` simply assigns a weight of
     ggplot(data=W_dat, aes(x=Date, y = value, fill=variable, group = variable)) +
       geom_area() + scale_fill_brewer(palette="Set2")
 
-![](man/figures/README/unnamed-chunk-24-1.png)
+![](forecasting_notebook_files/figure-markdown_strict/unnamed-chunk-24-1.png)

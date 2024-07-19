@@ -190,6 +190,7 @@ create_stacker <- function(experts, inners) {
   stacker <- list()
   stacker$experts <- experts
   stacker$experts_fitted <- FALSE
+  stacker$coef <- NULL
   # How should we define experts, as in dividing into correct outer/inner structure. Need an easy way to define
   if (length(experts) != length(inners)) {
     stop("Number of experts should match number of inner functions.")
@@ -233,7 +234,8 @@ create_stacker <- function(experts, inners) {
     }
 
     pre_fam <- NestedStack(list_of_densities, inners, RidgePen = 1e-05)
-    fitted_stack <- gam(formula_list, data = stack, family = pre_fam)
+    fitted_stack <- gam(formula_list, data = stack, family = pre_fam, start = stacker$coef)
+    stacker$coef <- fitted_stack$coef
     stacker$fitted_stack <- fitted_stack
     return(stacker)
   }

@@ -48,7 +48,9 @@ ordinal <- function(num_weights) { # nolint
   }
 
   f <- function(eta, theta) {
-    return(sapply(1:(length(theta) + 1), function(x) {f_j(eta, theta, x)}))
+    return(do.call("cbind",
+              lapply(1:(length(theta) + 1), function(x) {f_j(eta, theta, x)}))
+      )
   }
 
   F_diff <- function(x) {
@@ -71,7 +73,9 @@ ordinal <- function(num_weights) { # nolint
   }
 
   f_eta <- function(eta, theta) {
-    return(sapply(1:(length(theta) + 1), function(x) {f_eta_j(eta, theta, x)}))
+    return(do.call("cbind",
+            lapply(1:(length(theta) + 1), function(x) {f_eta_j(eta, theta, x)})))
+
   }
 
   f_theta_n <- function(eta, theta, n) {
@@ -133,7 +137,8 @@ ordinal <- function(num_weights) { # nolint
   }
 
   f_eta2 <- function(eta, theta) {
-    return(sapply(1:(length(theta) + 1), function(x) {f_eta2_j(eta, theta, x)}))
+    return(do.call("cbind",
+            lapply(1:(length(theta) + 1), function(x) {f_eta2_j(eta, theta, x)})))
   }
 
   f_eta_theta_n <- function(eta, theta, n) {
@@ -152,7 +157,9 @@ ordinal <- function(num_weights) { # nolint
   }
 
   get_derivs <- function(eta, tau, deriv) {
-    eta <- eta[[1]] # eta is always a list with one element
+    if (is.list(eta)) {
+      eta <- do.call("cbind", eta)
+    }
     store <- list()
     tau <- c(stats::qlogis(1/num_weights), tau)
     theta <- c(tau[1], tau[1] + cumsum(exp(tau[-1])))
@@ -792,14 +799,27 @@ MVN_weights4 <- function(x, dim_num) {
   getdens <- function() get(".dens_mat")
   putdens <- function(.x) assign(".dens_mat", .x, envir = environment(sys.function()))
 
+  assign(".n_k", n_k, envir = environment())
+  getn_k <- function() get(".n_k")
+
+  assign(".x", x, envir = environment())
+  getx <- function() get(".x")
+
+  assign(".dim_num", dim_num, envir = environment())
+  getdim_num <- function() get(".dim_num")
+
   get_derivs <- function(eta, theta, deriv = 1) {
     if (is.list(eta)) {eta <- do.call("cbind", eta)}
     store <- getstore()
+    n_k <- getn_k()
+    dim_num <- getdim_num()
+    x <- getx()
     get_derivs_cpp(eta, theta, deriv, n_k, dim_num, x, getdens(), store)
     return(store)
   }
 
   init_func <- function(densities) {
+    x <- getx()
     theta <- (apply(t(x), 1, (stats::var)))
     y1 <- max.col(densities)
     mustart <- (x[y1, ,drop=FALSE])
@@ -917,4 +937,388 @@ id <- function() {
 
   return(structure(get_derivs, neta = 0, ntheta = 0, theta_pen = pen, init_func = init_func, num_weights = 1, name = name))
 }
+
+# ========================================
+multinomial <- function(K, normalised = TRUE) {
+  # If normalised we don't need K eta
+  neta <- K - (1*normalised)
+
+  get_derivs <- function(eta, theta, deriv) {
+    store <- list()
+    if (is.list(eta)) {
+      eta <- do.call("cbind", eta)
+    }
+    if (normalised) {
+      eta <- cbind(0, eta)
+      rs_eta <- rowSums(exp(eta))
+      exp_eta <- exp(eta)
+      if (deriv >= 0) {
+        store$f_eval <- exp_eta/rs_eta
+        if (deriv >= 1) {
+          store$f_eta_eval <- list()
+          for (i in 2:K) {
+            f_eta_eval <- matrix(-exp_eta*exp_eta[,i]/rs_eta^2, nrow = nrow(eta), ncol = K)
+            f_eta_eval[,i] <-  f_eta_eval[,i] + exp_eta[,i]/rs_eta
+            store$f_eta_eval[[i-1]] <- f_eta_eval
+          }
+          store$f_theta_eval <- NULL
+
+          if (deriv >= 2) {
+            store$f_eta2_eval <- list()
+            for (i in 2:K) {
+              dki <- matrix(1:K == i, nrow = nrow(eta), ncol = K, byrow = TRUE)
+              store$f_eta2_eval[[i-1]] <- list()
+              for (j in 2:K) {
+                store$f_eta2_eval[[i-1]][[j-1]] <- store$f_eta_eval[[j-1]]*dki -
+                  store$f_eta_eval[[j-1]]*store$f_eval[,i] -
+                  store$f_eta_eval[[j-1]][,i] * store$f_eval
+              }
+            }
+            store$f_eta_theta_eval <- NULL
+            store$f_theta2_eval <- NULL
+          }
+        }
+      }
+      return(store)
+    } else {
+      if (deriv >= 0) {
+        store$f_eval <- exp(eta)
+        if (deriv >= 1) {
+          store$f_eta_eval <- list()
+          for (i in 1:neta) {
+            store$f_eta_eval[[i]] <- matrix(0, nrow = nrow(eta), ncol = neta)
+            store$f_eta_eval[[i]][,i] <- exp(eta[,i])
+          }
+          store$f_theta_eval <- NULL
+
+          if (deriv >= 2) {
+            store$f_eta2_eval <- list()
+            for (i in 1:neta) {
+              store$f_eta2_eval[[i]] <- list()
+              for (j in 1:neta) {
+                store$f_eta2_eval[[i]][[j]] <- matrix(0, nrow = nrow(eta), ncol = neta)
+                if (i == j) {
+                  store$f_eta2_eval[[i]][[j]][,j] <- exp(eta[,j])
+                }
+              }
+            }
+
+            store$f_eta_theta_eval <- NULL
+            store$f_theta2_eval <- NULL
+          }
+        }
+      }
+      return(store)
+    }
+  }
+
+  pen <- function(tau, deriv = 0) {
+    pen <- NULL
+    pen_grad <- NULL
+    pen_hess <- NULL
+
+    return(list(p = pen, pt = pen_grad, ptt = pen_hess))
+  }
+
+  init_func <- function(scores) {
+    # Initialise with binary score indicating best expert
+    y1 <- max.col(scores)
+    x <- diag(ncol(scores))
+    mustart <- x[y1,,drop=FALSE]
+    #mustart <- (mustart + 0.0000000001)/rowSums(mustart + 0.0000000001) # add pertubation for stability when taking log
+    #mustart <- log(mustart)
+    return(list(init_theta = NULL, init_mu = mustart))
+  }
+
+  name <- "multinomial"
+
+  return(structure(get_derivs,
+                   neta = neta,
+                   ntheta = 0,
+                   theta_pen = pen,
+                   init_func = init_func,
+                   num_weights = K, name = name))
+}
+
+
+# =================================================
+# Need to deal with fringe cases, 0 eta, 0 theta in inner and outer and both
+nested <- function(outer_weight, inner_weight) {
+  if (attr(outer_weight, "num_weights") != length(inner_weight)) {
+    stop("Number of outer weights should match number of inner functions.")
+  }
+  K <- length(inner_weight)
+  n_k <- sapply(inner_weight, function(w_f) attr(w_f, "num_weights"))
+  n_weights <- sum(n_k)
+
+  n_outer_eta <- attr(outer_weight, "neta")
+  n_outer_theta <- attr(outer_weight, "ntheta")
+
+  n_inner_eta <- sapply(inner_weight, function(w_f) attr(w_f, "neta"))
+  n_inner_theta <- sapply(inner_weight, function(w_f) attr(w_f, "ntheta"))
+
+  total_eta <- sum(n_inner_eta) + n_outer_eta
+  total_theta <- sum(n_inner_theta) + n_outer_theta
+
+  cumsum_eta <- c(0, cumsum(n_inner_eta))
+  cumsum_theta <- c(0, cumsum(n_inner_theta))
+
+  # Create flag variables for outer, inner parameters
+  have_outer_eta <- n_outer_eta > 0
+  have_outer_theta <- n_outer_theta > 0
+  have_inner_eta <- sum(n_inner_eta) > 0
+  have_inner_theta <- sum(n_inner_theta) > 0
+
+  outer_set <- rep(1:K, times = n_k)
+
+  eta_idx <- rep(1:(K+1), times = c(n_outer_eta, n_inner_eta))
+  theta_idx <- rep(1:(K+1), times = c(n_outer_theta, n_inner_theta))
+
+  get_derivs <- function(eta, theta, deriv = 0) {
+    store <- list()
+
+    outer_eta <- eta[,eta_idx == 1,drop=FALSE]
+    outer_theta <- theta[theta_idx == 1]
+    outer_w <- outer_weight(outer_eta, outer_theta, deriv)
+
+    inner_eta <- list()
+    inner_theta <- list()
+    inner_w <- list()
+
+    f_eval <- list()
+
+
+    for (i in 1:K) {
+      inner_eta[[i]] <- eta[,eta_idx == (i+1),drop=FALSE]
+      inner_theta[[i]] <- theta[theta_idx == (i+1)]
+      inner_w[[i]] <- inner_weight[[i]](inner_eta[[i]], inner_theta[[i]], deriv = deriv)
+      f_eval[[i]] <- outer_w$f_eval[,i] * inner_w[[i]]$f_eval
+    }
+
+    store$f_eval <- do.call("cbind", f_eval)
+
+    if (deriv >= 1) {
+      ow_idx <- rep(1:attr(outer_weight, "num_weights"), times = n_k)
+      eta_ele_idx <- do.call("c", lapply(n_inner_eta, function(n) 1:n))
+      theta_ele_idx <- do.call("c", lapply(n_inner_theta, function(n) 1:n))
+      eta_set_idx <- rep(1:length(inner_weight), times = n_inner_eta)
+      theta_set_idx <- rep(1:length(inner_weight), times = n_inner_theta)
+
+      inner_eval <- do.call("cbind", lapply(inner_w, "[[", "f_eval"))
+      outer_eval <- outer_w$f_eval
+      store$f_eta_eval <- list()
+      store$f_theta_eval <- list()
+
+      if (have_outer_eta) {
+        for (i in 1:n_outer_eta) {
+          store$f_eta_eval[[i]] <- inner_eval * outer_w$f_eta_eval[[i]][,ow_idx]
+        }
+      }
+
+      if (have_inner_eta) {
+        for (i in (1:sum(n_inner_eta))) {
+          eta_idx <- i + n_outer_eta
+          store$f_eta_eval[[eta_idx]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
+          store$f_eta_eval[[eta_idx]][, ow_idx == eta_set_idx[i]] <- outer_w$f_eval[,eta_set_idx[i]] *
+            inner_w[[eta_set_idx[i]]]$f_eta_eval[[eta_ele_idx[i]]]
+        }
+      }
+
+      if (have_outer_theta) {
+        for (i in 1:n_outer_theta) {
+          store$f_theta_eval[[i]] <- inner_eval * outer_w$f_theta_eval[[i]][,ow_idx]
+        }
+      }
+
+      if (have_inner_theta) {
+        for (i in 1:sum(n_inner_theta)) {
+          theta_idx <- i + n_outer_theta
+          store$f_theta_eval[[theta_idx]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
+          store$f_theta_eval[[theta_idx]][, ow_idx == theta_set_idx[i]] <- outer_w$f_eval[,theta_set_idx[i]] *
+            inner_w[[theta_set_idx[i]]]$f_theta_eval[[eta_ele_idx[i]]]
+        }
+      }
+      if (deriv > 1) {
+        store$f_eta2_eval <- list()
+        store$f_eta_theta_eval <- list()
+        store$f_theta2_eval <- list()
+        if (have_outer_eta) {
+          for (i in 1:n_outer_eta) {
+            store$f_eta2_eval[[i]] <- list()
+            store$f_eta_theta_eval[[i]] <- list()
+
+            for (j in 1:n_outer_eta) {
+              store$f_eta2_eval[[i]][[j]] <- inner_eval * outer_w$f_eta2_eval[[i]][[j]][,ow_idx]
+            }
+
+            if (have_inner_eta) {
+              for (j in 1:sum(n_inner_eta)) {
+                j <- j + n_outer_eta
+                store$f_eta2_eval[[i]][[j]] <- store$f_eta_eval[[i]]*store$f_eta_eval[[j]]/store$f_eval
+              }
+            }
+
+            if (have_outer_theta) {
+              for (j in 1:n_outer_theta) {
+                store$f_eta_theta_eval[[i]][[j]] <- inner_eval * outer_w$f_eta_theta_eval[[i]][[j]][,ow_idx]
+              }
+            }
+
+            if (have_inner_theta) {
+              for (j in 1:sum(n_inner_theta)) {
+                j <- j + n_outer_theta
+                store$f_eta_theta_eval[[i]][[j]] <- store$f_eta_eval[[i]]*store$f_theta_eval[[j]]/store$f_eval
+              }
+            }
+
+          }
+        }
+
+        if (have_inner_eta) {
+          for (i in 1:sum(n_inner_eta)) {
+            ix <- i + n_outer_eta
+            store$f_eta2_eval[[ix]] <- list()
+            store$f_eta_theta_eval[[ix]] <- list()
+            if (have_outer_eta) {
+              for (j in 1:n_outer_eta) {
+                store$f_eta2_eval[[ix]][[j]] <- store$f_eta2_eval[[j]][[ix]]
+              }
+            }
+
+            for (j in 1:sum(n_inner_eta)) {
+              jx <- j + n_outer_eta
+              store$f_eta2_eval[[ix]][[jx]] <-  matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
+              if (eta_set_idx[i] == eta_set_idx[j]) {
+                store$f_eta2_eval[[ix]][[jx]][,ow_idx == eta_set_idx[i]] <- outer_w$f_eval[,eta_set_idx[i]] *
+                  inner_w[[eta_set_idx[i]]]$f_eta2_eval[[eta_ele_idx[i]]][[eta_ele_idx[j]]]
+              }
+            }
+
+            if (have_outer_theta) {
+              for (j in 1:n_outer_theta) {
+                store$f_eta_theta_eval[[ix]][[j]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
+                store$f_eta_theta_eval[[ix]][[j]][,ow_idx==eta_set_idx[i]] <-
+                  outer_w$f_theta_eval[[j]][,eta_set_idx] * inner_w[[eta_set_idx[i]]]$f_eta_eval[[eta_ele_idx[i]]]
+              }
+            }
+
+            if (have_inner_theta) {
+              for (j in 1:sum(n_inner_theta)) {
+                jx <- j + n_outer_theta
+                store$f_eta_theta_eval[[ix]][[jx]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
+                if (eta_set_idx[i] == theta_set_idx[j]) {
+                  store$f_eta_theta_eval[[ix]][[jx]][,ow_idx==eta_set_idx[i]] <- outer_w$f_eval[,eta_set_idx[i]] *
+                    inner_w[[eta_set_idx[i]]]$f_eta_theta_eval[[eta_ele_idx[i]]][[theta_ele_idx[j]]]
+                }
+              }
+            }
+          }
+        }
+
+        if (have_outer_theta) {
+          for (i in 1:n_outer_theta) {
+            store$f_theta2_eval[[i]] <- list()
+            for (j in 1:n_outer_theta) {
+              store$f_theta2_eval[[i]][[j]] <- inner_eval * outer_w$f_theta2_eval[[i]][[j]][,ow_idx]
+            }
+            if (have_inner_theta) {
+              for (j in 1:sum(n_inner_theta)) {
+                jx <- j + n_outer_theta
+                store$f_theta2_eval[[i]][[jx]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
+                store$f_theta2_eval[[i]][[jx]][,ow_idx == theta_set_idx[j]] <- outer_w$f_theta_eval[[i]][,ow_idx] *
+                  inner_w[[theta_set_idx[j]]]$f_theta_eval[[theta_ele_idx[j]]]
+              }
+            }
+          }
+        }
+
+        if (have_inner_theta) {
+          for (i in 1:sum(n_inner_theta)) {
+            ix <- i + n_outer_theta
+            store$f_theta2_eval[[ix]] <- list()
+            if (have_outer_theta) {
+              for (j in 1:n_outer_theta) {
+                store$f_theta2_eval[[ix]][[j]] <- store$f_theta2_eval[[j]][[ix]]
+              }
+            }
+            for (j in 1:sum(n_inner_theta)) {
+              jx <- j + n_outer_theta
+              store$f_theta2_eval[[ix]][[jx]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
+              if (theta_set_idx[i] == theta_set_idx[j]) {
+                store$f_theta2_eval[[ix]][[jx]][,ow_idx == theta_set_idx[i]] <- outer_w$f_eval[,theta_set_idx[i]] *
+                  inner_w[[theta_set_idx[i]]]$f_theta2_eval[[theta_ele_idx[i]]][[theta_ele_idx[j]]]
+              }
+            }
+          }
+        }
+
+      }
+    }
+    return(store)
+  }
+
+  pen <- function(tau, deriv = 0) {
+    all_weights <- c(outer_weight, inner_weight)
+    theta_pens <- lapply(1:(K+1), function(i) attr(all_weights[[i]], "theta_pen")(tau[i==theta_idx], deriv = deriv))
+
+    pen <- sum(unlist(sapply(theta_pens, "[[", "p")))
+
+    if (deriv > 0) {
+      pen_grad <-  unlist(lapply(theta_pens, "[[", "pt"))
+      if (deriv > 1) {
+        d_penlist <- lapply(theta_pens, "[[", "ptt")
+        pen_hess <- as.matrix(Matrix::bdiag(d_penlist[!sapply(d_penlist, is.null)]))
+      }
+    }
+    return(list(p = pen, pt = pen_grad, ptt = pen_hess))
+  }
+
+  init_func <- function(scores) {
+    # Initialise with binary score indicating best expert
+    k_score <- matrix(nrow = nrow(scores), ncol = K)
+    theta_init <- list()
+    mu_init <- list()
+    scores_idx <- rep(1:K, times = n_k)
+    for (k in 1:K) {
+      inner_score <- scores[,k==score_idx[k]]
+      inner_init <- attr(inner_weight[[k]], "init_func")(inner_score)
+      theta_init[[k]] <- inner_init$init_theta
+      mu_init[[k]] <- inner_init$init_mu
+      init_weights <- inner_weight[[k]](mu_init[[k]], theta_init[[k]])
+      k_score[,k] <- rowSums(init_weights * inner_score)
+    }
+
+    outer_init <- attr(outer_weight, "init_func")(k_score)
+    outer_mu <- outer_init$init_mu
+    outer_theta <- outer_init$init_theta
+
+    init_theta <- c(outer_theta, do.call("c", theta_init))
+    init_mu <- cbind(outer_mu, do.call("cbind", mu_init))
+
+    return(list(init_theta = init_theta, init_mu = init_mu))
+  }
+
+  return(structure(get_derivs,
+                   neta = total_eta,
+                   ntheta = total_theta,
+                   theta_pen = pen,
+                   init_func = init_func,
+                   num_weights = n_weights, name = "nested"))
+}
+
+
+# 40, ordinal
+
+# Inner functions
+# id 1/K
+# ordinal
+# MVN
+# latent
+# multinomial
+
+
+
+
+
+
 

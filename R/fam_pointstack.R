@@ -39,7 +39,7 @@ get_point_derivatives <- function(list_of_beta,
   return(list(l = ll, lb = ll1, lbb = ll2))
 }
 
-LossStack <- function(preds, ridgePen = 1e-5) {
+PointStack <- function(preds, ridgePen = 1e-5) {
   # mgcv point forecast stacking family
 
   # Prep
@@ -180,7 +180,7 @@ LossStack <- function(preds, ridgePen = 1e-5) {
     return(list("fit" = W))
   }
 
-  structure(list(family = "LossStack",ll = ll,nlp = K,
+  structure(list(family = "PointStack",ll = ll,nlp = K,
                  link = "identity",
                  getPreds = getPreds,
                  getRidgePen = getRidgePen,

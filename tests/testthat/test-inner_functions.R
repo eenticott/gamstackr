@@ -95,4 +95,7 @@ test_that("ordinal derivs", {
   expect_true(check_deriv(wf, 1, deriv = 2))
   expect_true(check_deriv(wf, 3, deriv = 2))
   expect_true(check_deriv(wf, 5, deriv = 2))
+
+  wf <- nested(multinomial(3), list(ordinal(3), ordinal(5), ordinal(3)))
+  expect_true(check_deriv(wf, 2, deriv = 2))
 })

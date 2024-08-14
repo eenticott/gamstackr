@@ -1075,8 +1075,10 @@ nested <- function(outer_weight, inner_weight) {
   theta_idx <- rep(1:(K+1), times = c(n_outer_theta, n_inner_theta))
 
   get_derivs <- function(eta, theta, deriv = 0) {
+    if (is.list(eta)) {
+      eta <- do.call("cbind", eta)
+    }
     store <- list()
-
     outer_eta <- eta[,eta_idx == 1,drop=FALSE]
     outer_theta <- theta[theta_idx == 1]
     outer_w <- outer_weight(outer_eta, outer_theta, deriv)
@@ -1135,7 +1137,7 @@ nested <- function(outer_weight, inner_weight) {
           theta_idx <- i + n_outer_theta
           store$f_theta_eval[[theta_idx]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
           store$f_theta_eval[[theta_idx]][, ow_idx == theta_set_idx[i]] <- outer_w$f_eval[,theta_set_idx[i]] *
-            inner_w[[theta_set_idx[i]]]$f_theta_eval[[eta_ele_idx[i]]]
+            inner_w[[theta_set_idx[i]]]$f_theta_eval[[theta_ele_idx[i]]]
         }
       }
       if (deriv > 1) {
@@ -1153,8 +1155,10 @@ nested <- function(outer_weight, inner_weight) {
 
             if (have_inner_eta) {
               for (j in 1:sum(n_inner_eta)) {
-                j <- j + n_outer_eta
-                store$f_eta2_eval[[i]][[j]] <- store$f_eta_eval[[i]]*store$f_eta_eval[[j]]/store$f_eval
+                jx <- j + n_outer_eta
+                store$f_eta2_eval[[i]][[jx]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
+                store$f_eta2_eval[[i]][[jx]][,ow_idx == eta_set_idx[j]] <- outer_w$f_eta_eval[[i]][,eta_set_idx[j]] *
+                  inner_w[[eta_set_idx[j]]]$f_eta_eval[[eta_ele_idx[j]]]
               }
             }
 
@@ -1166,8 +1170,10 @@ nested <- function(outer_weight, inner_weight) {
 
             if (have_inner_theta) {
               for (j in 1:sum(n_inner_theta)) {
-                j <- j + n_outer_theta
-                store$f_eta_theta_eval[[i]][[j]] <- store$f_eta_eval[[i]]*store$f_theta_eval[[j]]/store$f_eval
+                jx <- j + n_outer_theta
+                store$f_eta_theta_eval[[i]][[jx]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
+                store$f_eta_theta_eval[[i]][[jx]][,ow_idx == theta_set_idx[j]] <- outer_w$f_eta_eval[[i]][,theta_set_idx[j]] *
+                  inner_w[[theta_set_idx[j]]]$f_theta_eval[[theta_ele_idx[j]]]
               }
             }
 
@@ -1198,7 +1204,7 @@ nested <- function(outer_weight, inner_weight) {
               for (j in 1:n_outer_theta) {
                 store$f_eta_theta_eval[[ix]][[j]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
                 store$f_eta_theta_eval[[ix]][[j]][,ow_idx==eta_set_idx[i]] <-
-                  outer_w$f_theta_eval[[j]][,eta_set_idx] * inner_w[[eta_set_idx[i]]]$f_eta_eval[[eta_ele_idx[i]]]
+                  outer_w$f_theta_eval[[j]][,eta_set_idx[i]] * inner_w[[eta_set_idx[i]]]$f_eta_eval[[eta_ele_idx[i]]]
               }
             }
 
@@ -1225,7 +1231,7 @@ nested <- function(outer_weight, inner_weight) {
               for (j in 1:sum(n_inner_theta)) {
                 jx <- j + n_outer_theta
                 store$f_theta2_eval[[i]][[jx]] <- matrix(0, nrow = nrow(store$f_eval), ncol = n_weights)
-                store$f_theta2_eval[[i]][[jx]][,ow_idx == theta_set_idx[j]] <- outer_w$f_theta_eval[[i]][,ow_idx] *
+                store$f_theta2_eval[[i]][[jx]][,ow_idx == theta_set_idx[j]] <- outer_w$f_theta_eval[[i]][,theta_set_idx[j]] *
                   inner_w[[theta_set_idx[j]]]$f_theta_eval[[theta_ele_idx[j]]]
               }
             }
@@ -1260,12 +1266,15 @@ nested <- function(outer_weight, inner_weight) {
   pen <- function(tau, deriv = 0) {
     all_weights <- c(outer_weight, inner_weight)
     theta_pens <- lapply(1:(K+1), function(i) attr(all_weights[[i]], "theta_pen")(tau[i==theta_idx], deriv = deriv))
+    pen <- NULL
+    pen_grad <- NULL
+    pen_hess <- NULL
 
     pen <- sum(unlist(sapply(theta_pens, "[[", "p")))
 
     if (deriv > 0) {
       pen_grad <-  unlist(lapply(theta_pens, "[[", "pt"))
-      if (deriv > 1) {
+      if (deriv > 0) {
         d_penlist <- lapply(theta_pens, "[[", "ptt")
         pen_hess <- as.matrix(Matrix::bdiag(d_penlist[!sapply(d_penlist, is.null)]))
       }
@@ -1278,13 +1287,13 @@ nested <- function(outer_weight, inner_weight) {
     k_score <- matrix(nrow = nrow(scores), ncol = K)
     theta_init <- list()
     mu_init <- list()
-    scores_idx <- rep(1:K, times = n_k)
+    score_idx <- rep(1:K, times = n_k)
     for (k in 1:K) {
-      inner_score <- scores[,k==score_idx[k]]
+      inner_score <- scores[,k==score_idx]
       inner_init <- attr(inner_weight[[k]], "init_func")(inner_score)
       theta_init[[k]] <- inner_init$init_theta
       mu_init[[k]] <- inner_init$init_mu
-      init_weights <- inner_weight[[k]](mu_init[[k]], theta_init[[k]])
+      init_weights <- inner_weight[[k]](mu_init[[k]], theta_init[[k]],deriv=0)$f_eval
       k_score[,k] <- rowSums(init_weights * inner_score)
     }
 

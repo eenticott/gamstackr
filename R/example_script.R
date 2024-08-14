@@ -16,13 +16,40 @@
 # den5 <- matrix(dnorm(iris$Sepal.Length, predict(ex5), sd(ex5$residuals), log = TRUE))
 #
 # stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5)), list(ordinal(5)))
-# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5), cbind(den1, den2, den3)), list(ordinal(5), ordinal(3)))
 # stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5)), list(MVN_weights(x=matrix(c(1,2,3,4,5),nrow=1))))
 # stack <- gam(list(Sepal.Length ~ Species + Sepal.Width), data = iris, family = stack_fam)
+# #
+# #
+# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5), cbind(den1, den2, den3)), list(ordinal(5), ordinal(3)))
 #
+# start = Sys.time()
+# stack1 <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species, ~Species), data = iris, family = stack_fam)
+# end = Sys.time()
+# end-start
 #
-# #stack <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species), data = iris, family = stack_fam)
+# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5, den1, den2, den3)), list(nested(multinomial(2), list(ordinal(5), ordinal(3)))))
 #
+# start = Sys.time()
+# stack2 <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species, ~Species), data = iris, family = stack_fam)
+# end = Sys.time()
+# end-start
+#
+# stack_fam = DensStack(cbind(den1, den2, den3, den4, den5, den1, den2, den3), nested(multinomial(2), list(ordinal(5), ordinal(3))))
+#
+# start = Sys.time()
+# stack3 <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species, ~Species), data = iris, family = stack_fam)
+# end = Sys.time()
+# end-start
+#
+# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5, den1, den2, den3, den1, den2, den3)),
+#                         inner_funcs = list(nested(ordinal(3), list(ordinal(5), ordinal(3), ordinal(3)))))
+#
+# start = Sys.time()
+# stack4 <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species, ~Species, ~Species), data = iris, family = stack_fam)
+# end = Sys.time()
+# end-start
+
+
 # W <- predict(stack, type = "response")
 #
 # barplot(t(unique(W[,1:3])), col = unique(iris$Species),

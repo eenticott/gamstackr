@@ -1315,6 +1315,155 @@ nested <- function(outer_weight, inner_weight) {
                    num_weights = n_weights, name = "nested"))
 }
 
+Latent <- function(K, q) {
+  nv <- (K-1-q)*q
+
+  neta <- q
+  ntheta <- nv + K-1
+
+  get_derivs <- function(eta, theta, deriv = 0) {
+    if (is.list(eta)) {
+      eta <- do.call("cbind", eta)
+    }
+    beta0 <- theta[1:(K-1)]
+    N <- nrow(eta)
+    v_mat <- rbind(diag(q), matrix(theta[K:length(theta)], ncol = q))
+
+    eta_aug <- (eta %*% t(v_mat)) + matrix(beta0, ncol = (K-1), nrow = N, byrow = TRUE)
+
+    aug_w <- multinomial(K, normalised = TRUE)
+    aug_deriv <- aug_w(eta_aug, 0, deriv = deriv)
+
+    store <- list()
+    store$f_eval <- aug_deriv$f_eval
+
+    if (deriv >= 1) {
+      store$f_eta_eval <- lapply(1:neta, function(i) matrix(nrow = N, ncol = K))
+      for (k in 1:K) {
+        M <- do.call("cbind", lapply(aug_deriv$f_eta_eval, function(i) i[,k])) %*%  v_mat
+        for (j in 1:neta) {
+          store$f_eta_eval[[j]][,k] <- M[,j]
+        }
+      }
+      store$f_theta_eval <- lapply(1:ntheta, function(i) matrix(nrow = N, ncol = K))
+
+      for (i in 1:(K-1)) {
+        store$f_theta_eval[[i]] <- aug_deriv$f_eta_eval[[i]]
+      }
+
+      vj <- rep(1:q, times = (K-1-q))
+      for (i in (K:ntheta)) {
+        vx <- i - (K-1)
+        ix <- floor(q+1+(i-K)/q)
+        jx <- vj[vx]
+        store$f_theta_eval[[i]] <- aug_deriv$f_eta_eval[[ix]]*eta[,jx]
+      }
+
+      if (deriv >= 2) {
+        store$f_eta2_eval <- list()
+        for (i in 1:neta) {
+          store$f_eta2_eval[[i]] <- list()
+          for (j in 1:neta) {
+            out = 0
+            for (h in 1:(K-1)) {
+              for (l in 1:(K-1)) {
+                out = out + aug_deriv$f_eta2_eval[[h]][[l]] * v_mat[h,i] * v_mat[l,j]
+              }
+            }
+            store$f_eta2_eval[[i]][[j]] <- out
+          }
+        }
+        store$f_eta_theta_eval <- list()
+        for (i in 1:neta) {
+          store$f_eta_theta_eval[[i]] <- list()
+          for (j in 1:(K-1)) {#eta bj0 derivs
+            out = 0
+            for (h in 1:(K-1)) {
+              out = out + aug_deriv$f_eta2_eval[[h]][[j]] * v_mat[h,i]
+            }
+            store$f_eta_theta_eval[[i]][[j]] <- out
+          }
+          for (j in K:ntheta) {
+            vx <- j - (K-1) # which element of v
+            ix <- floor(q+1+(j-K)/q) # which row of v
+            jx <- vj[vx] # which col of v
+            if (jx == i) {
+              out = aug_deriv$f_eta_eval[[ix]]
+            } else {
+              out = 0
+            }
+            for (h in 1:(K-1)) {
+              out = out + aug_deriv$f_eta2_eval[[h]][[ix]]*v_mat[h,i]*eta[,jx]
+            }
+            store$f_eta_theta_eval[[i]][[j]] <- out
+          }
+        }
+        for (i in 1:(K-1)) {
+          store$f_theta2_eval[[i]] <- list()
+          for (j in 1:(K-1)) {
+            store$f_theta2_eval[[i]][[j]] <- aug_deriv$f_eta2_eval[[i]][[j]]
+          }
+          for (j in K:ntheta) {
+            vx <- j - (K-1) # which element of v
+            c <- floor(q+1+(j-K)/q) # which row of v
+            d <- vj[vx] # which col of v
+
+            store$f_theta2_eval[[i]][[j]] <- aug_deriv$f_eta2_eval[[i]][[c]]*eta[,d]
+          }
+        }
+        for (i in K:ntheta) {
+          store$f_theta2_eval[[i]] <- list()
+          for (j in 1:(K-1)) {
+            store$f_theta2_eval[[i]][[j]] <- store$f_theta2_eval[[j]][[i]]
+          }
+          for (j in K:ntheta) {
+            ix <- i - (K-1)
+            jx <- j - (K-1)
+            a <- floor(q+1+(i-K)/q)
+            b <- vj[ix]
+            c <- floor(q+1+(j-K)/q)
+            d <- vj[jx]
+
+            store$f_theta2_eval[[i]][[j]] <- aug_deriv$f_eta2_eval[[a]][[c]]*eta[,b]*eta[,d]
+          }
+        }
+      }
+    }
+    return(store)
+  }
+
+  init_func <- function(scores) {
+    aug_weights <- multinomial(K)
+    init_aug_eta <- attr(aug_weights, "init_func")(scores)
+    init_eta <- init_aug_eta[,1:neta]
+    b0s <- rep(0, K-1)
+    vs <- list()
+    for (j in (neta+1):(K-1)) {
+      y1 <- init_aug_eta[,j]
+      X1 <- init_eta
+      coefs <- coef(lm(y1~X1))
+      b0s[j] <- coefs[1]
+      vs[[j-neta]] <- coefs[-1]
+    }
+    vs <- do.call("c", vs)
+    init_theta <- c(b0s, vs)
+    return(list(init_theta=init_theta,init_mu=init_eta))
+  }
+
+  pen <- function(tau, deriv = 0) {
+    p <- 0
+    pt <- rep(0, ntheta)
+    ptt <- matrix(0, nrow = ntheta, ncol = ntheta)
+    return(list(p = p, pt = pt, ptt = ptt))
+  }
+
+  return(structure(get_derivs,
+                   neta=neta,
+                   ntheta=ntheta,
+                   theta_pen=pen,
+                   init_func=init_func,
+                   num_weights=K, name = "Latent"))
+}
 
 # 40, ordinal
 

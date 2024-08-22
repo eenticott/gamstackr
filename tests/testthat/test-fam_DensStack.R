@@ -7,7 +7,6 @@ check_dens_deriv <- function(weight_func, p, N, tol = 1e-8) {
   K <- attr(weight_func, "num_weights")
 
   dens <- matrix(rnorm(N*K), nrow = N, ncol = K)
-
   # Input check for p
   if (length(p) > 1) {
     if (length(p) != neta) {
@@ -27,10 +26,10 @@ check_dens_deriv <- function(weight_func, p, N, tol = 1e-8) {
   tmp_fun <- function(pars) {
     list_of_beta <- split(pars[1:nbeta], rep(1:neta, p))
     theta <- pars[(nbeta+1):(nbeta + ntheta)]
-    get_ll_dens_derivs(list_of_beta, list_of_X, theta, weight_func, (dens))$l
+    get_ll_dens_derivs(list_of_beta, list_of_X, theta, weight_func, dens)$l
   }
 
-  out <- get_ll_dens_derivs(list_of_beta, list_of_X, theta, weight_func, (dens), 2)
+  out <- get_ll_dens_derivs(list_of_beta, list_of_X, theta, weight_func, dens, 2)
 
   calc_grad <- out$lb
   calc_hess <- out$lbb

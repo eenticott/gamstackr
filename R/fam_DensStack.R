@@ -37,7 +37,7 @@ get_ll_dens_derivs <- function(list_of_beta,
                             log_dens,
                             deriv = 0) {
 
-  K <- ncol(dens)
+  K <- ncol(log_dens)
   Ws <- weight
   dens <- exp(log_dens)
   n_eta <- attr(Ws, "neta")

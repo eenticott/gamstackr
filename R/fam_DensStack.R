@@ -272,7 +272,9 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
       }
 
       # Initial thetas
-      coefs[(nbeta+1):(nbeta+ntheta)] <- init_pars$init_theta
+      if (ntheta > 0) {
+        coefs[(nbeta+1):(nbeta+ntheta)] <- init_pars$init_theta
+      }
       return(coefs)
     }
     if(is.null(start)){
@@ -333,7 +335,7 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
                               list_of_X,
                               theta,
                               weight,
-                              exp(log_dens),
+                              log_dens,
                               deriv = deriv)
 
     #derivs$llbb <- as.numeric(derivs$llbb) # not sure why it isn't already numeric
@@ -349,6 +351,9 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
     # theta penalty
     t_pen <- attr(weight, "theta_pen")(theta, deriv = deriv)
     theta_pen <- t_pen$p
+    if (is.null(theta_pen)) {
+      theta_pen <- 0
+    }
     theta_pen_d1 <- t_pen$pt
     theta_pen_d2 <- t_pen$ptt
 

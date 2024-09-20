@@ -1465,6 +1465,71 @@ Latent <- function(K, q) {
                    num_weights=K, name = "Latent"))
 }
 
+ordinal_alt <- function(K) {
+  # If normalised we don't need K eta
+  neta <- 1
+
+  get_derivs <- function(eta, theta, deriv) {
+    store <- list()
+    if (is.list(eta)) {
+      eta <- do.call("cbind", eta)
+    }
+    theta <- c(0, theta, 1)
+
+    N <- nrow(eta)
+    K <- length(theta)
+    phi_mat <- matrix(theta, nrow = N, ncol = K, byrow = TRUE)
+    etam <- eta%*%theta
+    W <- exp(etam)/rowSums(exp(etam))
+    store$f_eval <- W
+    if (deriv >= 1) {
+      store$f_eta_eval <- list()
+      store$f_eta_eval[[1]] <- W * (phi_mat - rowSums(W*phi_mat))
+      store$f_theta_eval <- list()
+      for (i in 1:(K-2)) {
+        tmp_mat <- matrix(0, nrow = N, ncol = K)
+        tmp_mat[,i+1] <- 1
+        store$f_theta_eval[[i]] <- (as.vector(eta) * W) * (tmp_mat - W[,i+1])
+      }
+      if (deriv >= 2) {
+        store$f_eta2_eval <- list()
+        store$f_eta2_eval[[1]] <- list()
+        store$f_eta2_eval[[1]][[1]] <- W * (phi_mat - rowSums(W*phi_mat))^2 - W*rowSums(W*phi_mat^2) + W*(rowSums(phi_mat*W)^2)
+          #W * (phi_mat - rowSums(W*phi_mat))^2 - W*sapply(1:K, FUN = function(k) {rowSums(W*(phi_mat-phi_mat[,k])^2)})
+        store$f_theta2_eval <- list()
+        for (i in 1:(K-2)) {
+          store$f_theta2_eval[[i]] <- list()
+          for (j in 1:(K-2)) {
+            tmp_mat1 <- matrix(0, nrow = N, ncol = K)
+            tmp_mat1[,i+1] <- 1
+            tmp_mat2 <- matrix(0, nrow = N, ncol = K)
+            tmp_mat2[,j+1] <- 1
+            store$f_theta2_eval[[i]][[j]] <- (as.vector(eta^2) * W)* ((tmp_mat1 - W[,i+1]) * (tmp_mat2 - W[,j+1]) - W[,i+1]*((i==j)-W[,j+1]))
+          }
+        }
+        store$f_eta_theta_eval <- list()
+        store$f_eta_theta_eval[[1]] <- list()
+        for (j in 1:(K-2)) {
+          tmp_mat <- matrix(0, nrow = N, ncol = K)
+          tmp_mat[,j+1] <- 1
+          store$f_eta_theta_eval[[1]][[j]] <- as.vector(eta)*W*(tmp_mat - W[,j+1])*(phi_mat-rowSums(phi_mat*W)) + W*(tmp_mat + as.vector(rowSums(W*phi_mat)*eta)*W[,j+1] - W[,j+1] - as.vector(eta*phi_mat[,j+1]*W[,j+1]))
+            #W * (as.vector(eta)*(tmp_mat-W[,j+1])*(phi_mat - rowSums(W*phi_mat)) + (tmp_mat-W[,j+1]))
+        }
+      }
+    }
+    return(store)
+  }
+
+  name <- "ordinal_alt"
+
+  return(structure(get_derivs,
+                   neta = neta,
+                   ntheta = K-2,
+                   #theta_pen = pen,
+                   #init_func = init_func,
+                   num_weights = K, name = name))
+}
+
 # 40, ordinal
 
 # Inner functions

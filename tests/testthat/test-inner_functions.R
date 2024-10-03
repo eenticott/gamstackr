@@ -1,12 +1,21 @@
 library(numDeriv)
 
+# Test whether inner function derivatives are correct
+
 check_deriv <- function(weight_func, k, deriv = 1, tol = 1e-8, print_derivs = FALSE) {
+  # weight_func - Inner function to test
+  # k - which weight index to check
+  # deriv - check first or first and second derivs
+  # tol - Max error rate between true and numerical
+  # print_derivs - Print out deriv values when calculated (for debugging)s
   neta <- attr(weight_func, "neta")
   ntheta <- attr(weight_func, "ntheta")
 
+  # Randomise eta and theta to evaluate derivs at
   eta <- matrix(rnorm(neta), nrow = 1)
   theta <- rnorm(ntheta)
 
+  # Calculate weights and derivatives
   out <- weight_func(eta, theta, deriv = deriv)
 
   tmp_fun <- function(pars) {
@@ -85,6 +94,7 @@ check_deriv <- function(weight_func, k, deriv = 1, tol = 1e-8, print_derivs = FA
   }
 }
 
+# Test each of the inner functions
 test_that("ordinal derivs", {
   wf <- ordinal(5)
   expect_true(check_deriv(wf, 1, deriv = 2))

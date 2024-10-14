@@ -7,7 +7,7 @@ check_deriv <- function(weight_func, k, deriv = 1, tol = 1e-8, print_derivs = FA
   # k - which weight index to check
   # deriv - check first or first and second derivs
   # tol - Max error rate between true and numerical
-  # print_derivs - Print out deriv values when calculated (for debugging)s
+  # print_derivs - Print out deriv values when calculated (for debugging)
   neta <- attr(weight_func, "neta")
   ntheta <- attr(weight_func, "ntheta")
 
@@ -112,3 +112,18 @@ test_that("ordinal derivs", {
   wf <- Latent(5, 3)
   expect_true(check_deriv(wf, 2, deriv = 2))
 })
+
+test_that("mvn derivs", {
+  x <- matrix(rnorm(15), nrow = 3, ncol = 5)
+  wf <- MVN_weights_cpp(x, dim_num = 3)
+  expect_true(check_deriv(wf, 1, deriv = 2))
+
+  x <- matrix(rnorm(5), nrow = 1, ncol = 5)
+  wf <- MVN_weights_cpp(x, dim_num = 1)
+  expect_true(check_deriv(wf, 2, deriv = 2))
+
+  x <- matrix(rnorm(15), nrow = 3, ncol = 5)
+  wf <- MVN_weights_cpp(x, dim_num = 3)
+  expect_true(check_deriv(wf, 5, deriv = 2))
+})
+

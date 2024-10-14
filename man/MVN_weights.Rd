@@ -4,7 +4,7 @@
 \alias{MVN_weights}
 \title{Produces an object containing derivatives for multivariate normal stacking}
 \usage{
-MVN_weights(x, dim_num)
+MVN_weights(ex_coords)
 }
 \arguments{
 \item{x}{Array of (dim_num, n_k) specifying locations for each of the models}
@@ -19,5 +19,5 @@ Produces an object containing derivatives for multivariate normal stacking
 }
 \examples{
 x <- matrix(c(1:6), nrow = 3)
-MVN_weights(x, 3)
+MVN_weights(x)
 }

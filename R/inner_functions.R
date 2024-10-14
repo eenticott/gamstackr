@@ -1,3 +1,13 @@
+# Inner functions
+# id
+# ordinal
+# MVN_weights
+# MVN_weights_cpp
+# latent
+# multinomial
+# multinomial
+
+
 # Functions that can be used for internal model weights and derivatives
 rowsums <- Cpp_rowSums
 
@@ -12,31 +22,37 @@ max_index_mat <- function(n) { # used in ordinal penalty
   return((n+1) - out)
 }
 
+
+# Inner functions ==============================================================
+
 # Ordinal inner functions ------------------------------------------------------
 #' Produces an object containing derivatives for ordered stacking
 #'
-#' @param num_weights Integer: How many weights in the ordering
+#' @param K Integer: How many weights in the ordering
 #'
 #' @return List of functions for finding ordinal weights
 #' @export
 #'
 #' @examples
 #' ordinal(3)
-ordinal <- function(num_weights) { # nolint
-  if (num_weights <= 2) {
+ordinal <- function(K) { # nolint
+  if (K <= 2) {
     stop("Ordinal weights require at least 3 experts.")
   }
 
+  # Initialise storage
   store <- list()
   force(store)
   assign(".store", NULL, envir = environment())
   getstore <- function() get(".store")
   putstore <- function(.x) assign(".store", .x, envir = environment(sys.function()))
 
+  # Cumulative distribution function
   F <- function(x) {
     1 / (1 + exp(- (x)))
   }
 
+  # weight function at j
   f_j <- function(eta, theta, j) {
     if (j == 1) {
       return(F(theta[1] - eta))
@@ -53,6 +69,7 @@ ordinal <- function(num_weights) { # nolint
       )
   }
 
+  # Computationally stable calc of diff in F
   F_diff <- function(x) {
     abs_x <- abs(x)
     exp_x <- exp(-abs_x)
@@ -62,6 +79,7 @@ ordinal <- function(num_weights) { # nolint
     return(out)
   }
 
+  # First derivative of f_j w.r.t. eta
   f_eta_j <- function(eta, theta, j) {
     if (j == 1) {
       return(-F_diff(theta[1] - eta))
@@ -72,12 +90,14 @@ ordinal <- function(num_weights) { # nolint
     }
   }
 
+  # First derivative of f w.r.t. eta (as vector)
   f_eta <- function(eta, theta) {
     return(do.call("cbind",
             lapply(1:(length(theta) + 1), function(x) {f_eta_j(eta, theta, x)})))
 
   }
 
+  # First derivative of f w.r.t. theta_n
   f_theta_n <- function(eta, theta, n) {
     store <- matrix(0, length(eta), length(theta) + 1)
     store[, n] <- F_diff(theta[n] - eta)
@@ -85,6 +105,7 @@ ordinal <- function(num_weights) { # nolint
     return(store)
   }
 
+  # First derivative of f w.r.t. theta
   f_theta <- function(eta, theta) {
     out <- list()
 
@@ -94,6 +115,7 @@ ordinal <- function(num_weights) { # nolint
     return(out)
   }
 
+  # Second derivatives follow similiarly
   F_diff2 <- function(x) {
     abs_x <- abs(x)
     exp_x <- exp(-abs_x)
@@ -157,28 +179,34 @@ ordinal <- function(num_weights) { # nolint
   }
 
   get_derivs <- function(eta, tau, deriv) {
+    # eta - list or vector of eta
+    # tau - vector of extra parameters (on untransformed scale)
+    # deriv - integer 0, 1, 2, what level of derivatives needed
     if (is.list(eta)) {
       eta <- do.call("cbind", eta)
     }
     store <- list()
-    tau <- c(stats::qlogis(1/num_weights), tau)
+    # transform tau
+    tau <- c(stats::qlogis(1/K), tau)
     theta <- c(tau[1], tau[1] + cumsum(exp(tau[-1])))
     store$f_eval <- f(eta, theta)
 
     if (deriv >= 1) {
+      # first derivatives
       store$f_eta_eval <- list(f_eta(eta, theta))
 
       # Take cumulative sum of reverse order, then reverse so sum at front and just last term at end
       store$f_theta_eval <- list_by_vector(rev(mat_cumsum(rev(f_theta(eta, theta)))), c(tau[1], exp(tau[-1])))[-1]
-      if (num_weights == 2) {
+      if (K == 2) {
         store$f_theta_eval <- NULL
 
       }
       if (deriv >= 2) {
+        # second derivatives
         store$f_eta2_eval <- list(list(f_eta2(eta, theta)))
         store$f_eta_theta_eval <- list(list_by_vector(rev(mat_cumsum(rev(f_eta_theta(eta, theta)))),
                                                  c(tau[1], exp(tau[-1])))[-1])
-        if (num_weights > 2) {
+        if (K > 2) {
           f_theta2_orig <- f_theta2(eta, theta)
           f_theta2_d <- get_diag(f_theta2_orig)
           sums <- rev(mat_cumsum(rev(f_theta2_d[-1])))
@@ -208,19 +236,22 @@ ordinal <- function(num_weights) { # nolint
   }
 
   init_func <- function(densities) {
+    # initialise thetas at equal spacing
+    # eta intialised to centre between thresholds of best expert
     y1 <- max.col(densities)
-    init_tau <- log(diff(stats::qlogis(seq(1, num_weights - 1) / num_weights)))
-    fixed_tau <- stats::qlogis(1 / num_weights)
+    init_tau <- log(diff(stats::qlogis(seq(1, K - 1) / K)))
+    fixed_tau <- stats::qlogis(1 / K)
     tau <- c(fixed_tau, init_tau, 1)
     theta <- c(fixed_tau - 1, tau[1], tau[1] + cumsum(exp(tau[-1])))
     mustart <- (theta[y1 + 1] + theta[y1]) / 2
-    if (num_weights == 2) {
+    if (K == 2) {
       init_tau <- NULL
     }
     return(list(init_mu = matrix(mustart), init_theta = init_tau))
   }
 
   pen <- function(tau, deriv = 0) {
+    # penalise the distance between thresholds
     n <- length(tau) + 2
     theta <- c(stats::qlogis(1 / n), stats::qlogis(1 / n) + cumsum(exp(tau)))
 
@@ -240,8 +271,8 @@ ordinal <- function(num_weights) { # nolint
                    init_func = init_func,
                    theta_pen = pen,
                    neta = 1,
-                   ntheta = num_weights - 2,
-                   num_weights = num_weights,
+                   ntheta = K - 2,
+                   num_weights = K,
                    name = "ordinal"))
 }
 
@@ -256,17 +287,12 @@ ordinal <- function(num_weights) { # nolint
 #'
 #' @examples
 #' x <- matrix(c(1:6), nrow = 3)
-#' MVN_weights(x, 3)
-MVN_weights <- function(x, dim_num) {
+#' MVN_weights(x)
+MVN_weights <- function(ex_coords) {
   # Input
   # -----
-  # x - Array of (dim_num, n_k) specifying locations for each of the models
-  # Suppose we have N data points
-  # n_k inner functions
-  # inner functions f_j depend on:
-  #   etaT_1,..., etaT_p
-  #   etaT denotes tilde(eta)
-  #   theta_1,..., theta_q
+  # ex_coords - Array of (dim_num, K) specifying coordinates of each expert
+  x <- ex_coords
   force(x)
   n_k <- ncol(x)
   dim_num <- nrow(x)
@@ -274,16 +300,21 @@ MVN_weights <- function(x, dim_num) {
   x <- t(x)
 
   get_derivs <- function(eta, theta, deriv = 1) {
+    # eta - list or vector of eta
+    # tau - vector of extra parameters (on real line)
+    # deriv - integer 0, 1, 2, what level of derivatives needed
     if (is.list(eta)) {eta <- do.call("cbind", eta)}
     tau <- exp(theta)
     dens_matrix <- matrix(nrow = nrow(eta) * n_k, ncol = dim_num)
 
+    # find density of each coordinate in each dimension
     for (n in 1:dim_num) {
       dens_matrix[, n] <-  llk_gaussian(rep(x[, n], each = nrow(eta)),
                                         param = list(rep(eta[, n], n_k), 1 / sqrt(tau[n])),
                                         deriv = 0)$d0
     }
 
+    # computationally stable calc of exp(dens)/rowsums(dens)
     log_dens <- matrix(rowsums(dens_matrix), ncol = n_k)
     shift_mat <- log_dens - matrixStats::rowMaxs(log_dens)
 
@@ -294,6 +325,7 @@ MVN_weights <- function(x, dim_num) {
 
     store$f_eval <- expshift / rs_expshift
 
+    # derivatives follow from formulas
     if (deriv >= 1) {
       dens_list <- list()
       for (n in 1:dim_num) {
@@ -406,6 +438,8 @@ MVN_weights <- function(x, dim_num) {
   }
 
   init_func <- function(densities) {
+    # initialise theta at variance in each dimension
+    # initialise eta at best expert each point
     theta <- (apply(t(x), 1, (stats::var)))
     y1 <- max.col(densities)
     mustart <- (x[y1, ,drop=FALSE])
@@ -413,6 +447,7 @@ MVN_weights <- function(x, dim_num) {
   }
 
   pen <- function(tau, deriv = 0) {
+    # penalise size of theta to avoid flat densities
     theta <- exp(tau)
     v <- (apply(t(x), 1, (stats::var)))
     pen <- sum((theta - v)^2)
@@ -444,11 +479,11 @@ MVN_weights <- function(x, dim_num) {
   ))
 }
 
-# Multivariate normal inner functions ------------------------------------------
+# Multivariate normal inner functions cpp --------------------------------------
 #' Produces an object containing derivatives for multivariate normal stacking
+#' Uses cpp for faster computation
 #'
-#' @param x Array of (dim_num, n_k) specifying locations for each of the models
-#' @param dim_num Integer specifying number of dimensions required
+#' @param ex_coords Array of (dim_num, K) specifying locations for each of the experts, dim_num is dimension of expert space
 #'
 #' @return Object containing derivatives for multivariate normal stacking
 #' @export
@@ -456,16 +491,17 @@ MVN_weights <- function(x, dim_num) {
 #' @examples
 #' x <- matrix(c(1:6), nrow = 3)
 #' MVN_weights(x, 3)
-MVN_weights_cpp <- function(x, dim_num) {
+MVN_weights_cpp <- function(ex_coords) {
   # Input
   # -----
-  # x - Array of (dim_num, n_k) specifying locations for each of the models
+  # ex_coords - Array of (dim_num, K) specifying locations for each of the models
   # Suppose we have N data points
   # n_k inner functions
   # inner functions f_j depend on:
   #   etaT_1,..., etaT_p
   #   etaT denotes tilde(eta)
   #   theta_1,..., theta_q
+  x <- ex_coords
   force(x)
   n_k <- ncol(x)
   dim_num <- nrow(x)
@@ -514,6 +550,9 @@ MVN_weights_cpp <- function(x, dim_num) {
   }
 
   get_derivs <- function(eta, theta, deriv = 1) {
+    # eta - list or vector of eta
+    # tau - vector of extra parameters (on real line)
+    # deriv - integer 0, 1, 2, what level of derivatives needed
     if (is.list(eta)) {eta <- do.call("cbind", eta)}
     store <- getstore()
     K <- getn_k()
@@ -582,9 +621,6 @@ MVN_weights_cpp <- function(x, dim_num) {
 # ========================================
 #' Produces equal weights without any dependence on parameters
 #'
-#' @param num_weights Integer: How many equally weighted parts
-#' @param N  Integer: Number of data points
-#'
 #' @return Object of derivatives for equally weighted models
 #' @export
 #'
@@ -638,11 +674,23 @@ id <- function() {
 }
 
 # ========================================
+#' Multinomial weights
+#'
+#' @param K - Integer specifying how many weights are used
+#' @param normalised - Boolean, should weights be normalised
+#'
+#' @return - Weight object
+#' @export
+#'
+#' @examples
 multinomial <- function(K, normalised = TRUE) {
   # If normalised we don't need K eta
   neta <- K - (1*normalised)
 
   get_derivs <- function(eta, theta, deriv) {
+    # eta - list or vector of eta
+    # tau - vector of extra parameters (on real line)
+    # deriv - integer 0, 1, 2, what level of derivatives needed
     store <- list()
     if (is.list(eta)) {
       eta <- do.call("cbind", eta)
@@ -742,6 +790,16 @@ multinomial <- function(K, normalised = TRUE) {
 
 # =================================================
 # Need to deal with fringe cases, 0 eta, 0 theta in inner and outer and both
+#' Nested weights, weights a set of inner weighting functions by function given
+#' in outer weight
+#'
+#' @param outer_weight - Weighting function to multiply inner weights
+#' @param inner_weight - List of inner weighting functions
+#'
+#' @return A weighting object that multiplies set of outer weights by inner weights
+#' @export
+#'
+#' @examples
 nested <- function(outer_weight, inner_weight) {
   if (attr(outer_weight, "num_weights") != length(inner_weight)) {
     stop("Number of outer weights should match number of inner functions.")
@@ -774,6 +832,9 @@ nested <- function(outer_weight, inner_weight) {
   theta_idx <- rep(1:(K+1), times = c(n_outer_theta, n_inner_theta))
 
   get_derivs <- function(eta, theta, deriv = 0) {
+    # eta - list or vector of eta
+    # tau - vector of extra parameters (on real line)
+    # deriv - integer 0, 1, 2, what level of derivatives needed
     if (is.list(eta)) {
       eta <- do.call("cbind", eta)
     }
@@ -1014,6 +1075,17 @@ nested <- function(outer_weight, inner_weight) {
                    num_weights = n_weights, name = "nested"))
 }
 
+
+#' Latent weights aim to recreate multinomial with less linear predictors by
+#' using 'latent' linear predictors
+#'
+#' @param K integer - Number of experts to weight
+#' @param q integer - Number of latent factors to use
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Latent <- function(K, q) {
   nv <- (K-1-q)*q
 
@@ -1021,6 +1093,9 @@ Latent <- function(K, q) {
   ntheta <- nv + K-1
 
   get_derivs <- function(eta, theta, deriv = 0) {
+    # eta - list or vector of eta
+    # tau - vector of extra parameters (on real line)
+    # deriv - integer 0, 1, 2, what level of derivatives needed
     if (is.list(eta)) {
       eta <- do.call("cbind", eta)
     }
@@ -1164,6 +1239,7 @@ Latent <- function(K, q) {
                    num_weights=K, name = "Latent"))
 }
 
+# Only used for theoretical results
 ordinal_alt <- function(K) {
   # If normalised we don't need K eta
   neta <- 1
@@ -1229,14 +1305,6 @@ ordinal_alt <- function(K) {
                    num_weights = K, name = name))
 }
 
-# 40, ordinal
-
-# Inner functions
-# id 1/K
-# ordinal
-# MVN
-# latent
-# multinomial
 
 
 

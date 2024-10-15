@@ -516,7 +516,7 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
 
     theta <- beta[(nbeta+1):(nbeta+ntheta)]
 
-    W <- weight(list_of_eta, theta)
+    W <- weight(list_of_eta, theta, deriv = 0)
 
     return(list("fit" = W$f_eval))
   }

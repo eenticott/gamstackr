@@ -4,7 +4,8 @@ get_loss_derivs <- function(list_of_beta,
                             tau,
                             loss,
                             weight,
-                            preds) {
+                            preds,
+                            y) {
 
   K <- ncol(preds)
   Ws <- weight

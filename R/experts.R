@@ -172,13 +172,15 @@ evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densi
 #' Create a stacking object from experts and inner functions.
 #'
 #' @param experts List of expert objects created by `create_expert`.
-#' @param inners Function that determines how weights
+#' @param weight_func Function that determines expert weights.
+#' @param type "dens" or "loss" - Whether densities or predictions are being stacked.
+#' @param loss Loss function you want to optimise with stacking. Only needed if type = "loss".
 #'
 #' @return Stacking object that can take data and return predicted weights for experts.
 #' @export
 #'
 #' @examples
-create_stacker <- function(experts, inners) {
+create_stacker <- function(experts, weight_func, type, loss = NULL) {
   if (!is.list(experts)) {
     stop("Experts must be supplied in a list.")
   }
@@ -189,10 +191,12 @@ create_stacker <- function(experts, inners) {
 
   stacker <- list()
   stacker$experts <- experts
+  stacker$weight_func <- weight_func
   stacker$experts_fitted <- FALSE
   stacker$coef <- NULL
-  # How should we define experts, as in dividing into correct outer/inner structure. Need an easy way to define
-  if (length(experts) != length(inners)) {
+
+  # Check number of experts match number of weights
+  if (length(experts) != attr(weight_func, "num_weights")) {
     stop("Number of experts should match number of inner functions.")
   }
 
@@ -200,7 +204,6 @@ create_stacker <- function(experts, inners) {
 
   # fit experts to same data
   stacker$fit_experts <- function(stacker, train) {
-    stacker$experts_fitted <- TRUE
     experts <- stacker$experts
     for (i in 1:K) {
       for (j in 1:length(experts[[i]])) {
@@ -209,51 +212,65 @@ create_stacker <- function(experts, inners) {
       }
     }
     stacker$experts <- experts
+    stacker$experts_fitted <- TRUE
     return(stacker)
   }
 
   # fit stack using densities from fitted experts
-  stacker$fit_stack <- function(stacker,formula_list, stack, list_of_densities = NULL) {
-    if (!(stacker$experts_fitted) & is.null(list_of_densities)) {
+  stacker$fit_stack <- function(stacker, formula_list, stack, preds = NULL) {
+    # preds - matrix of predictions or densities
+    if (!(stacker$experts_fitted) & is.null(preds)) {
       stop("fit_stack requires experts to be fitted prior or densities to be directly supplied.")
     }
 
-    if (is.null(list_of_densities)) {
-      list_of_densities <- list()
+    if (is.null(preds)) {
+      preds <- matrix(nrow = nrow(stack), ncol = K)
       experts <- stacker$experts
-      for (i in 1:K) {
-        dens <- matrix(nrow = nrow(stack), ncol = length(experts[[i]]))
-        for (j in 1:length(experts[[i]])) {
-          dens[,j] <- experts[[i]][[j]]$density(experts[[i]][[j]], stack)
+      for (k in 1:K) {
+        expert <- experts[[k]]
+        if (type == "dens") {
+          preds[,k] <- expert$density(expert, stack)
         }
-        list_of_densities[[i]] <- dens
+        if (type == "loss") {
+          preds[,k] <- expert$predict(expert, stack)
+        }
       }
-      stacker$list_of_densities <- list_of_densities
-    } else {
-      stacker$list_of_densities <- list_of_densities
     }
 
-    pre_fam <- NestedStack(list_of_densities, inners, RidgePen = 1e-05)
+    if (type == "dens") {
+      pre_fam <- DensStack(preds, weight_func)
+    }
+    if (type == "loss") {
+      pre_fam <- LossStack(preds, loss, weight_func)
+    }
     fitted_stack <- gam(formula_list, data = stack, family = pre_fam, start = stacker$coef)
     stacker$coef <- fitted_stack$coef
     stacker$fitted_stack <- fitted_stack
     return(stacker)
   }
 
-  stacker$predict <- function(stacker, newdata, list_of_densities, type) {
-    stacker$fitted_stack$family$putMWF(TRUE)
-    if (type == "weights") {
+  stacker$predict <- function(stacker, newdata, output="weights") {
+    if (output == "weights") {
       out <- predict(stacker$fitted_stack, newdata, type = "response")
-      stacker$fitted_stack$family$putMWF(FALSE)
       return(out)
     }
-    if (type == "density") {
-      out <- rowSums(predict(stacker$fitted_stack, newdata, type = "response") * do.call("cbind", list_of_densities))
-      stacker$fitted_stack$family$putMWF(FALSE)
+    if (output == "preds") {
+      preds <- matrix(nrow = nrow(stack), ncol = K)
+      experts <- stacker$experts
+      for (k in 1:K) {
+        expert <- experts[[k]]
+        if (type == "dens") {
+          preds[,k] <- expert$density(expert, newdata)
+        }
+        if (type == "loss") {
+          preds[,k] <- expert$predict(expert, newdata)
+        }
+      }
+
+      out <- rowSums(predict(stacker$fitted_stack, newdata, type = "response") * preds)
       return(out)
     }
   }
-
   return(stacker)
 }
 
@@ -288,4 +305,3 @@ evaluate_all <- function(experts, stacker, formula, expert_windower, stack_windo
   }
   return(out_list)
 }
-

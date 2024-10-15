@@ -140,9 +140,9 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
 #' @export
 #'
 #' @examples
-evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densities) {
-  if (nrow(list_of_densities[[1]]) != nrow(stack_data)) {
-    stop("Stack data must correspond to given densities, found mismatch in nrow.")
+evaluate_stack <- function(stacker, formula, windower, stack_data, preds) {
+  if (nrow(preds) != nrow(stack_data)) {
+    stop("Stack data must correspond to given predictions, found mismatch in nrow.")
   }
 
   stacking_dat <- windower(stack_data)
@@ -158,10 +158,10 @@ evaluate_stack <- function(stacker, formula, windower, stack_data, list_of_densi
     #cat(paste0(i, "/", length(attr(stacking_dat, "training_windows"))), "\n")
     stack_dat <-  stacking_dat[attr(stacking_dat, "training_windows")[[i]],,drop = FALSE]
     test_dat <- stacking_dat[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE]
-    clod <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "training_windows")[[i]],, drop = FALSE])
-    clotd <- lapply(list_of_densities, function(x) x[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE])
+    clod <- preds[attr(stacking_dat, "training_windows")[[i]],,drop = FALSE]
+    clotd <- preds[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE]
     stacker <- stacker$fit_stack(stacker, formula, stack_dat, clod)
-    out_list[[i]] <- stacker$predict(stacker, test_dat, clotd, "weights")
+    out_list[[i]] <- stacker$predict(stacker, test_dat, "weights")
     setTxtProgressBar(pb, i)
   }
   close(pb)

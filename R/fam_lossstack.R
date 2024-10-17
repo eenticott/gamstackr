@@ -325,7 +325,7 @@ LossStack <- function(preds, loss, weights, ridgePen = 1e-5) {
     return(list("fit" = W$f_eval))
   }
 
-  structure(list(family = "LossStack",ll = ll,nlp = K,
+  structure(list(family = "LossStack",ll = ll,nlp = attr(weights, "neta"),
                  link = "identity",
                  getPreds = getPreds,
                  getRidgePen = getRidgePen,

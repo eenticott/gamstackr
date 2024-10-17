@@ -244,10 +244,10 @@ LossStack <- function(preds, loss, weights, ridgePen = 1e-5) {
         }
       }
       list_of_eta <- .internals()[["get_list_of_eta"]](list_of_X, list_of_beta)
-
+      theta <- init_coefs$init_theta
       # Initial theta
       if (ntheta > 0) {
-        coefs[nbeta + 1:ntheta] <- init_coefs$init_theta
+        coefs[(nbeta + 1):ntheta] <- init_coefs$init_theta
       }
 
       # logscale of residual variance under initial weights

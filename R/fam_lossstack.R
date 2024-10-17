@@ -234,7 +234,7 @@ LossStack <- function(preds, loss, weights, ridgePen = 1e-5) {
 
         coefs[lpi[[jj]]] <- start_coef(x1, e1, y1)
         list_of_beta[[jj]] <- coefs[lpi[[jj]]]
-
+        list_of_X[[jj]] <- x1
         # exp fix for multinomial
         if (attr(family$weights, "name") == "multinomial") {
           y1 <- x1 %*% coefs[lpi[[jj]]]
@@ -243,12 +243,13 @@ LossStack <- function(preds, loss, weights, ridgePen = 1e-5) {
           list_of_X[[jj]] <- x1
         }
       }
-      list_of_eta <- .internals()[["get_list_of_eta"]](list_of_X, list_of_beta)
-      theta <- init_coefs$init_theta
       # Initial theta
       if (ntheta > 0) {
-        coefs[(nbeta + 1):ntheta] <- init_coefs$init_theta
+        coefs[(nbeta+1):(nbeta+ntheta)] <- init_coefs$init_theta
       }
+
+      list_of_eta <- .internals()[["get_list_of_eta"]](list_of_X, list_of_beta)
+      theta <- init_coefs$init_theta
 
       # logscale of residual variance under initial weights
       coefs[nbeta + ntheta + 1] <- log(var(rowSums(W_f(list_of_eta, theta, deriv = 0)$f_eval * preds)-y))

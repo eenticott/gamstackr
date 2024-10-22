@@ -1054,7 +1054,7 @@ nested <- function(outer_weight, inner_weight) {
       theta_init[[k]] <- inner_init$init_theta
       mu_init[[k]] <- inner_init$init_mu
       init_weights <- inner_weight[[k]](mu_init[[k]], theta_init[[k]],deriv=0)$f_eval
-      if (attr(init_weights, "name") == "id") {init_weights <- 1}
+      if (attr(inner_weight[[k]], "name") == "id") {init_weights <- 1}
       k_score[,k] <- rowSums(init_weights * inner_score)
     }
 

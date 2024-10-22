@@ -140,7 +140,7 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
 #' @export
 #'
 #' @examples
-evaluate_stack <- function(stacker, formula, windower, stack_data, preds) {
+evaluate_stack <- function(stacker, formula, windower, stack_data, preds, RidgePen = 1e-5) {
   if (nrow(preds) != nrow(stack_data)) {
     stop("Stack data must correspond to given predictions, found mismatch in nrow.")
   }
@@ -160,7 +160,7 @@ evaluate_stack <- function(stacker, formula, windower, stack_data, preds) {
     test_dat <- stacking_dat[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE]
     clod <- preds[attr(stacking_dat, "training_windows")[[i]],,drop = FALSE]
     clotd <- preds[attr(stacking_dat, "testing_windows")[[i]],, drop = FALSE]
-    stacker <- stacker$fit_stack(stacker, formula, stack_dat, clod)
+    stacker <- stacker$fit_stack(stacker, formula, stack_dat, clod, RidgePen = RidgePen)
     out_list[[i]] <- stacker$predict(stacker, test_dat, "weights")
     setTxtProgressBar(pb, i)
   }
@@ -217,7 +217,7 @@ create_stacker <- function(experts, weight_func, type, loss = NULL) {
   }
 
   # fit stack using densities from fitted experts
-  stacker$fit_stack <- function(stacker, formula_list, stack, preds = NULL) {
+  stacker$fit_stack <- function(stacker, formula_list, stack, preds = NULL, RidgePen = 1e-5) {
     # preds - matrix of predictions or densities
     if (!(stacker$experts_fitted) & is.null(preds)) {
       stop("fit_stack requires experts to be fitted prior or densities to be directly supplied.")
@@ -238,10 +238,10 @@ create_stacker <- function(experts, weight_func, type, loss = NULL) {
     }
 
     if (type == "dens") {
-      pre_fam <- DensStack(preds, weight_func)
+      pre_fam <- DensStack(preds, weight_func, RidgePen)
     }
     if (type == "loss") {
-      pre_fam <- LossStack(preds, loss, weight_func)
+      pre_fam <- LossStack(preds, loss, weight_func, RidgePen)
     }
     fitted_stack <- gam(formula_list, data = stack, family = pre_fam, start = stacker$coef)
     stacker$coef <- fitted_stack$coef

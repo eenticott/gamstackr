@@ -1049,11 +1049,12 @@ nested <- function(outer_weight, inner_weight) {
     mu_init <- list()
     score_idx <- rep(1:K, times = n_k)
     for (k in 1:K) {
-      inner_score <- scores[,k==score_idx]
+      inner_score <- scores[,k==score_idx,drop=FALSE]
       inner_init <- attr(inner_weight[[k]], "init_func")(inner_score)
       theta_init[[k]] <- inner_init$init_theta
       mu_init[[k]] <- inner_init$init_mu
       init_weights <- inner_weight[[k]](mu_init[[k]], theta_init[[k]],deriv=0)$f_eval
+      if (attr(init_weights, "name") == "id") {init_weights <- 1}
       k_score[,k] <- rowSums(init_weights * inner_score)
     }
 

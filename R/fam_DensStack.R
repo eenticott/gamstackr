@@ -3,20 +3,52 @@ log_rowSums_a_times_b <- function(log_a, log_b) {
   log_c_maxs <- matrixStats::rowMaxs(log_c)
   log_c_maxs + log(rowSums(exp(log_c - log_c_maxs)))
 }
+# use Rfast::rowMax(value=TRUE)
 
-rs_AB <- function(logA, B) {
-  # Compute log(A * B) as logA + log(|B|)
-  log_A_times_B <- logA + log(abs(B))
 
-  # Compute the element-wise product in logarithm space
-  # This is effectively log(A * B)
-  exp_log_A_times_B <- exp(log_A_times_B) * sign(B)
 
-  # Compute row sums
-  row_sums <- rowSums(exp_log_A_times_B)
+A <- exp(matrix(rnorm(1000000*100), ncol = 100))
+B <- (matrix(rnorm(1000000*100), ncol = 100))
+logA <- log(A)
 
-  return(row_sums)
+log_a_maxs <- Rfast::rowMaxs(logA, value = TRUE)
+exp_log_a_maxs <- exp(log_a_maxs)
+exp_log_a_diff <- exp(logA - log_a_maxs)
+
+rowSums(A*B)
+
+rs_AB(logA, B) - rowSums(A*B)
+
+rs_AB2 <- function(log_a, b) {
+  log_a_maxs <- Rfast::rowMaxs(log_a, value = TRUE)
+  exp(log_a_maxs)*(Rfast::rowsums(exp(log_a - log_a_maxs)*b))
 }
+
+#
+microbenchmark::microbenchmark(
+rs_AB(exp_log_a_maxs, exp_log_a_diff, B),
+rs_AB_cpp2(exp_log_a_maxs, exp_log_a_diff, B)
+)
+
+
+
+
+rs_AB3 <- function(exp_log_a_max, exp_log_a_diff, b) {
+  exp_log_a_max*(Rfast::rowsums(exp_log_a_diff*b))
+}
+
+
+
+
+rs_AB2(logA,B) - rowSums(A*B)
+
+
+
+
+microbenchmark::microbenchmark(rs_AB2(logA, B), rs_AB(logA, B), rowSums(A*B), rs_AB3(log_a_maxs,exp_log_a_diff,B),Rfast::rowsums(A*B))
+
+
+
 
 AoB <- function(A, logB) {
   # Compute log(A/B) as log(|A|) - log(B)
@@ -24,18 +56,164 @@ AoB <- function(A, logB) {
   exp_log_A_over_B <- exp(log_A_over_B) * sign(A)
   return(exp_log_A_over_B)
 }
+AoB <- cpp_AoB
+
 
 rs_AB_o_C <- function(logA, B, logC) {
   # Computes rowSums(A*B)/C stable for logA and logC
   return(AoB(rs_AB(logA, B), logC))
 }
 
-get_ll_dens_derivs <- function(list_of_beta,
+rs_AB_o_C <- function(logA, B, logC) {
+  # Computes rowSums(A*B)/C using Rcpp for speed
+  return(AoB_cpp(rs_AB_cpp(logA, B), logC))
+}
+
+get_ll_dens_derivs_cpp <- function(list_of_beta,
                             list_of_X,
                             theta,
                             weight,
                             log_dens,
                             deriv = 0) {
+  out <- get_ll_dens_derivs_cpp(list_of_beta, list_of_X, theta, weight, log_dens, get_list_of_eta, deriv)
+
+  dbb <- out$dbb
+  dbt <- out$dbt
+  dtt <- out$dtt
+
+  my_t <- function(x) {
+    if (is.null(x)) return(NULL)
+    return(t(x))
+  }
+
+  hess <- NULL
+
+  if (deriv > 1) {
+    hess <- rbind(cbind(dbb, dbt),
+                  cbind(my_t(dbt), dtt))
+  }
+
+
+  return(list(l = out$l, lb = out$lb, lbb = hess))
+}
+
+# get_ll_dens_derivs <- function(list_of_beta,
+#                             list_of_X,
+#                             theta,
+#                             weight,
+#                             log_dens,
+#                             deriv = 0) {
+#
+#   K <- ncol(log_dens)
+#   Ws <- weight
+#   dens <- exp(log_dens)
+#   n_eta <- attr(Ws, "neta")
+#   n_theta <- attr(Ws, "ntheta")
+#
+#   eta <- get_list_of_eta(list_of_X, list_of_beta)
+#   W <- Ws(eta, theta, 2)
+#
+#   llk_deriv <- log_rowSums_a_times_b(log(W$f_eval), log_dens)
+#
+#   #llk_deriv <- (rowSums(W$f_eval*dens))
+#
+#   ll <- sum(llk_deriv)
+#
+#   grad <- NULL
+#   hess <- NULL
+#
+#   if (deriv > 0) {
+#     db <- NULL
+#     dt <- NULL
+#     # First derivs
+#     if (n_eta > 0) {
+#       db <- (do.call("c", lapply(1:n_eta, function(k) colSums(rs_AB_o_C(log_dens, W$f_eta_eval[[k]], llk_deriv) *
+#                                                                 list_of_X[[k]]))))
+#     }
+#     if (n_theta > 0) {
+#       dt <- (do.call("c", lapply(1:n_theta, function(k) sum(rs_AB_o_C(log_dens, W$f_theta_eval[[k]], llk_deriv)))))
+#     }
+#
+#     grad <- c(db, dt)
+#
+#     if (deriv > 1) {
+#       dbb <- NULL
+#       dbt <- NULL
+#       dtt <- NULL
+#       if (n_eta > 0) {
+#         dbb <- list()
+#         for (i in 1:n_eta) {
+#           dbb[[i]] <- list()
+#           for (j in 1:n_eta) {
+#             dbb[[i]][[j]] <- t(list_of_X[[i]]) %*%
+#               ((rs_AB_o_C(log_dens, W$f_eta2_eval[[i]][[j]], llk_deriv) -
+#                   (rs_AB_o_C(log_dens, W$f_eta_eval[[i]], llk_deriv) *
+#                      rs_AB_o_C(log_dens, W$f_eta_eval[[j]], llk_deriv))) *
+#                  list_of_X[[j]])
+#           }
+#           dbb[[i]] <- do.call("cbind", dbb[[i]])
+#         }
+#         dbb <- do.call("rbind", dbb)
+#         if (n_theta > 0) {
+#           dbt <- list()
+#           for (i in 1:n_eta) {
+#             dbt[[i]] <- list()
+#             for (j in 1:n_theta) {
+#               dbt[[i]][[j]] <- colSums((rs_AB_o_C(log_dens, W$f_eta_theta_eval[[i]][[j]], llk_deriv) -
+#                                           (rs_AB_o_C(log_dens, W$f_eta_eval[[i]], llk_deriv)*
+#                                              rs_AB_o_C(log_dens, W$f_theta_eval[[j]], llk_deriv))) *
+#                                          list_of_X[[i]])
+#             }
+#             dbt[[i]] <- do.call("cbind", dbt[[i]])
+#           }
+#           dbt <- do.call("rbind", dbt)
+#
+#         }
+#       }
+#       if (n_theta > 0) {
+#         dtt <- list()
+#         for (i in 1:n_theta) {
+#           dtt[[i]] <- list()
+#           for (j in 1:n_theta) {
+#             dtt[[i]][[j]] <- sum((rs_AB_o_C(log_dens, W$f_theta2_eval[[i]][[j]], llk_deriv) -
+#                                     (rs_AB_o_C(log_dens, W$f_theta_eval[[i]], llk_deriv) *
+#                                        rs_AB_o_C(log_dens, W$f_theta_eval[[j]], llk_deriv))))
+#           }
+#           dtt[[i]] <- do.call("cbind", dtt[[i]])
+#         }
+#         dtt <- do.call("rbind", dtt)
+#       }
+#       my_t <- function(x) {
+#         if (is.null(x)) return(NULL)
+#         return(t(x))
+#       }
+#
+#       hess <- rbind(cbind(dbb, dbt),
+#                     cbind(my_t(dbt), dtt))
+#     }
+#   }
+#   return(list(l = ll, lb = grad, lbb = hess))
+# }
+
+
+
+rsABOC <- function(A, B, C) {
+  Cpp_rowSums(A*B)/C
+}
+
+rs_AB <- function(exp_log_a_max, exp_log_a_diff, b) {
+  exp_log_a_max*(Rfast::rowsums(exp_log_a_diff*b))
+}
+
+
+
+
+get_ll_dens_derivs <- function(list_of_beta,
+                               list_of_X,
+                               theta,
+                               weight,
+                               log_dens,
+                               deriv = 0) {
 
   K <- ncol(log_dens)
   Ws <- weight
@@ -43,11 +221,15 @@ get_ll_dens_derivs <- function(list_of_beta,
   n_eta <- attr(Ws, "neta")
   n_theta <- attr(Ws, "ntheta")
 
+  log_dens_maxs <- Rfast::rowMaxs(log_dens, value = TRUE)
+  exp_log_a_maxs <- exp(log_a_maxs)
+  exp_log_a_diff <- exp(log_dens - log_a_maxs)
+
   eta <- get_list_of_eta(list_of_X, list_of_beta)
-  W <- Ws(eta, theta, 2)
-
+  W <- Ws(eta, theta, deriv)
+  llk_deriv <- rs_AB(exp_log_a_maxs, exp_log_a_diff, W$f_eval)
   llk_deriv <- log_rowSums_a_times_b(log(W$f_eval), log_dens)
-
+  exp_llk_deriv <- exp(llk_deriv)
   #llk_deriv <- (rowSums(W$f_eval*dens))
 
   ll <- sum(llk_deriv)
@@ -60,11 +242,10 @@ get_ll_dens_derivs <- function(list_of_beta,
     dt <- NULL
     # First derivs
     if (n_eta > 0) {
-      db <- (do.call("c", lapply(1:n_eta, function(k) colSums(rs_AB_o_C(log_dens, W$f_eta_eval[[k]], llk_deriv) *
-                                                                list_of_X[[k]]))))
+      db <- (do.call("c", lapply(1:n_eta, function(k) colSums((rowSums(dens * W$f_eta_eval[[k]]) / exp_llk_deriv) * list_of_X[[k]]))))
     }
     if (n_theta > 0) {
-      dt <- (do.call("c", lapply(1:n_theta, function(k) sum(rs_AB_o_C(log_dens, W$f_theta_eval[[k]], llk_deriv)))))
+      dt <- (do.call("c", lapply(1:n_theta, function(k) sum(dens* W$f_theta_eval[[k]]/ exp_llk_deriv))))
     }
 
     grad <- c(db, dt)
@@ -79,9 +260,9 @@ get_ll_dens_derivs <- function(list_of_beta,
           dbb[[i]] <- list()
           for (j in 1:n_eta) {
             dbb[[i]][[j]] <- t(list_of_X[[i]]) %*%
-              ((rs_AB_o_C(log_dens, W$f_eta2_eval[[i]][[j]], llk_deriv) -
-                  (rs_AB_o_C(log_dens, W$f_eta_eval[[i]], llk_deriv) *
-                     rs_AB_o_C(log_dens, W$f_eta_eval[[j]], llk_deriv))) *
+              ((rsABOC(dens, W$f_eta2_eval[[i]][[j]], exp_llk_deriv) -
+                  (rsABOC(dens, W$f_eta_eval[[i]], exp_llk_deriv) *
+                     rsABOC(dens, W$f_eta_eval[[j]], exp_llk_deriv))) *
                  list_of_X[[j]])
           }
           dbb[[i]] <- do.call("cbind", dbb[[i]])
@@ -92,9 +273,9 @@ get_ll_dens_derivs <- function(list_of_beta,
           for (i in 1:n_eta) {
             dbt[[i]] <- list()
             for (j in 1:n_theta) {
-              dbt[[i]][[j]] <- colSums((rs_AB_o_C(log_dens, W$f_eta_theta_eval[[i]][[j]], llk_deriv) -
-                                          (rs_AB_o_C(log_dens, W$f_eta_eval[[i]], llk_deriv)*
-                                             rs_AB_o_C(log_dens, W$f_theta_eval[[j]], llk_deriv))) *
+              dbt[[i]][[j]] <- colSums((rsABOC(dens, W$f_eta_theta_eval[[i]][[j]], exp_llk_deriv) -
+                                          (rsABOC(dens, W$f_eta_eval[[i]], exp_llk_deriv)*
+                                             rsABOC(dens, W$f_theta_eval[[j]], exp_llk_deriv))) *
                                          list_of_X[[i]])
             }
             dbt[[i]] <- do.call("cbind", dbt[[i]])
@@ -108,9 +289,9 @@ get_ll_dens_derivs <- function(list_of_beta,
         for (i in 1:n_theta) {
           dtt[[i]] <- list()
           for (j in 1:n_theta) {
-            dtt[[i]][[j]] <- sum((rs_AB_o_C(log_dens, W$f_theta2_eval[[i]][[j]], llk_deriv) -
-                                    (rs_AB_o_C(log_dens, W$f_theta_eval[[i]], llk_deriv) *
-                                       rs_AB_o_C(log_dens, W$f_theta_eval[[j]], llk_deriv))))
+            dtt[[i]][[j]] <- sum((rsABOC(dens, W$f_theta2_eval[[i]][[j]], exp_llk_deriv) -
+                                    (rsABOC(dens, W$f_theta_eval[[i]], exp_llk_deriv) *
+                                       rsABOC(dens, W$f_theta_eval[[j]], exp_llk_deriv))))
           }
           dtt[[i]] <- do.call("cbind", dtt[[i]])
         }
@@ -127,6 +308,7 @@ get_ll_dens_derivs <- function(list_of_beta,
   }
   return(list(l = ll, lb = grad, lbb = hess))
 }
+
 
 DensStack <- function(logP, weight, RidgePen = 1e-5) {
   ### mgcv family for nested stacking
@@ -159,6 +341,10 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
   assign(".logP", logP, envir = environment())
   getLogP <- function() get(".logP")
   putLogP <- function(.x) assign(".logP", .x, envir = environment(sys.function()))
+
+
+
+
 
   # P
   assign(".P", P, envir = environment())

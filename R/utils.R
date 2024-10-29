@@ -110,3 +110,15 @@ bind_output <- function(list_of_lists, type) {
   internals[["bind_output"]] <- bind_output
   return(internals)
 }
+
+#' Title
+#'
+#' @param list_of_lists
+#'
+#' @return
+#' @export
+#'
+#' @examples
+bind_list <- function(list_of_lists) {
+  do.call("rbind", lapply(list_of_lists, function(x) do.call("cbind", x)))
+}

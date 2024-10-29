@@ -4,7 +4,7 @@
 \alias{evaluate_stack}
 \title{Evaluate a set of experts with weighting functions.}
 \usage{
-evaluate_stack(stacker, formula, windower, stack_data, list_of_densities)
+evaluate_stack(stacker, formula, windower, stack_data, preds, RidgePen = 1e-05)
 }
 \arguments{
 \item{stacker}{Stacker object created by \code{create_stacker}.}

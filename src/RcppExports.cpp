@@ -11,6 +11,121 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// rs_AB_cpp2
+arma::vec rs_AB_cpp2(const arma::vec& exp_log_a_max, const arma::mat& exp_log_a_diff, const arma::mat& b);
+RcppExport SEXP _gamstackr_rs_AB_cpp2(SEXP exp_log_a_maxSEXP, SEXP exp_log_a_diffSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type exp_log_a_max(exp_log_a_maxSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type exp_log_a_diff(exp_log_a_diffSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(rs_AB_cpp2(exp_log_a_max, exp_log_a_diff, b));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpp_AoB
+NumericVector cpp_AoB(NumericVector A, NumericVector logB);
+RcppExport SEXP _gamstackr_cpp_AoB(SEXP ASEXP, SEXP logBSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type A(ASEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type logB(logBSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_AoB(A, logB));
+    return rcpp_result_gen;
+END_RCPP
+}
+// stable_rowsum_div_cpp
+NumericVector stable_rowsum_div_cpp(NumericMatrix logA, NumericMatrix B, NumericVector logC);
+RcppExport SEXP _gamstackr_stable_rowsum_div_cpp(SEXP logASEXP, SEXP BSEXP, SEXP logCSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type logA(logASEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type B(BSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type logC(logCSEXP);
+    rcpp_result_gen = Rcpp::wrap(stable_rowsum_div_cpp(logA, B, logC));
+    return rcpp_result_gen;
+END_RCPP
+}
+// log_rowSums_a_times_b_cpp
+NumericVector log_rowSums_a_times_b_cpp(NumericMatrix log_a, NumericMatrix log_b);
+RcppExport SEXP _gamstackr_log_rowSums_a_times_b_cpp(SEXP log_aSEXP, SEXP log_bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type log_a(log_aSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type log_b(log_bSEXP);
+    rcpp_result_gen = Rcpp::wrap(log_rowSums_a_times_b_cpp(log_a, log_b));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rs_AB_cpp
+NumericVector rs_AB_cpp(NumericMatrix logA, NumericMatrix B);
+RcppExport SEXP _gamstackr_rs_AB_cpp(SEXP logASEXP, SEXP BSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type logA(logASEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type B(BSEXP);
+    rcpp_result_gen = Rcpp::wrap(rs_AB_cpp(logA, B));
+    return rcpp_result_gen;
+END_RCPP
+}
+// ABoC
+NumericVector ABoC(NumericVector AB, NumericVector C);
+RcppExport SEXP _gamstackr_ABoC(SEXP ABSEXP, SEXP CSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type AB(ABSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type C(CSEXP);
+    rcpp_result_gen = Rcpp::wrap(ABoC(AB, C));
+    return rcpp_result_gen;
+END_RCPP
+}
+// AoB_cpp
+NumericVector AoB_cpp(NumericVector A, NumericVector logB);
+RcppExport SEXP _gamstackr_AoB_cpp(SEXP ASEXP, SEXP logBSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type A(ASEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type logB(logBSEXP);
+    rcpp_result_gen = Rcpp::wrap(AoB_cpp(A, logB));
+    return rcpp_result_gen;
+END_RCPP
+}
+// outer_prod
+NumericMatrix outer_prod(NumericVector x, NumericVector y);
+RcppExport SEXP _gamstackr_outer_prod(SEXP xSEXP, SEXP ySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    rcpp_result_gen = Rcpp::wrap(outer_prod(x, y));
+    return rcpp_result_gen;
+END_RCPP
+}
+// get_ll_dens_derivs_cpp
+List get_ll_dens_derivs_cpp(List list_of_beta, List list_of_X, NumericVector theta, Function weight, NumericMatrix log_dens, Function beta_to_eta, int deriv);
+RcppExport SEXP _gamstackr_get_ll_dens_derivs_cpp(SEXP list_of_betaSEXP, SEXP list_of_XSEXP, SEXP thetaSEXP, SEXP weightSEXP, SEXP log_densSEXP, SEXP beta_to_etaSEXP, SEXP derivSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type list_of_beta(list_of_betaSEXP);
+    Rcpp::traits::input_parameter< List >::type list_of_X(list_of_XSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< Function >::type weight(weightSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type log_dens(log_densSEXP);
+    Rcpp::traits::input_parameter< Function >::type beta_to_eta(beta_to_etaSEXP);
+    Rcpp::traits::input_parameter< int >::type deriv(derivSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_ll_dens_derivs_cpp(list_of_beta, list_of_X, theta, weight, log_dens, beta_to_eta, deriv));
+    return rcpp_result_gen;
+END_RCPP
+}
 // Cpp_rowSums
 NumericVector Cpp_rowSums(const NumericMatrix& x);
 RcppExport SEXP _gamstackr_Cpp_rowSums(SEXP xSEXP) {
@@ -42,6 +157,15 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_gamstackr_rs_AB_cpp2", (DL_FUNC) &_gamstackr_rs_AB_cpp2, 3},
+    {"_gamstackr_cpp_AoB", (DL_FUNC) &_gamstackr_cpp_AoB, 2},
+    {"_gamstackr_stable_rowsum_div_cpp", (DL_FUNC) &_gamstackr_stable_rowsum_div_cpp, 3},
+    {"_gamstackr_log_rowSums_a_times_b_cpp", (DL_FUNC) &_gamstackr_log_rowSums_a_times_b_cpp, 2},
+    {"_gamstackr_rs_AB_cpp", (DL_FUNC) &_gamstackr_rs_AB_cpp, 2},
+    {"_gamstackr_ABoC", (DL_FUNC) &_gamstackr_ABoC, 2},
+    {"_gamstackr_AoB_cpp", (DL_FUNC) &_gamstackr_AoB_cpp, 2},
+    {"_gamstackr_outer_prod", (DL_FUNC) &_gamstackr_outer_prod, 2},
+    {"_gamstackr_get_ll_dens_derivs_cpp", (DL_FUNC) &_gamstackr_get_ll_dens_derivs_cpp, 7},
     {"_gamstackr_Cpp_rowSums", (DL_FUNC) &_gamstackr_Cpp_rowSums, 1},
     {"_gamstackr_get_derivs_cpp", (DL_FUNC) &_gamstackr_get_derivs_cpp, 8},
     {NULL, NULL, 0}

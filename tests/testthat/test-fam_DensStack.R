@@ -31,15 +31,19 @@ check_dens_deriv <- function(weight_func, p, N, tol = 1e-8) {
 
   theta <- rnorm(ntheta)
 
+  log_dens_maxs <- Rfast::rowMaxs(dens, value = TRUE)
+  exp_log_dens_maxs <- exp(log_dens_maxs)
+  exp_log_dens_diff <- exp(dens - log_dens_maxs)
+
   # Create function to be used inside num deriv
   tmp_fun <- function(pars) {
     list_of_beta <- split(pars[1:nbeta], rep(1:neta, p))
     theta <- pars[(nbeta+1):(nbeta + ntheta)]
-    get_ll_dens_derivs(list_of_beta, list_of_X, theta, weight_func, dens)$l
+    get_ll_dens_derivs(list_of_beta, list_of_X, theta, weight_func, dens, exp_log_dens_maxs, exp_log_dens_diff)$l
   }
 
   # Calculate derivatives
-  out <- get_ll_dens_derivs(list_of_beta, list_of_X, theta, weight_func, dens, 2)
+  out <- get_ll_dens_derivs(list_of_beta, list_of_X, theta, weight_func, dens,exp_log_dens_maxs, exp_log_dens_diff, 2)
 
   calc_grad <- out$lb
   calc_hess <- out$lbb

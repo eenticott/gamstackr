@@ -305,17 +305,22 @@ MVN_weights <- function(ex_coords) {
     # deriv - integer 0, 1, 2, what level of derivatives needed
     if (is.list(eta)) {eta <- do.call("cbind", eta)}
     tau <- exp(theta)
-    dens_matrix <- matrix(nrow = nrow(eta) * n_k, ncol = dim_num)
-
+    # dens_matrix <- matrix(nrow = nrow(eta) * n_k, ncol = dim_num)
+    dens_list <- list()
     # find density of each coordinate in each dimension
     for (n in 1:dim_num) {
-      dens_matrix[, n] <-  llk_gaussian(rep(x[, n], each = nrow(eta)),
-                                        param = list(rep(eta[, n], n_k), 1 / sqrt(tau[n])),
-                                        deriv = 0)$d0
+      dens_list[[n]] <- llk_gaussian2(matrix(x[,n], ncol = n_k, nrow = nrow(eta)),
+                                      param = list(eta[,n], 1/sqrt(tau[n])),
+                                      deriv = 0)$d0
+      # dens_matrix[, n] <-  llk_gaussian(rep(x[, n], each = nrow(eta)),
+      #                                   param = list(rep(eta[, n], n_k), 1 / sqrt(tau[n])),
+      #                                   deriv = deriv)$d0
     }
 
     # computationally stable calc of exp(dens)/rowsums(dens)
-    log_dens <- matrix(rowsums(dens_matrix), ncol = n_k)
+
+    # log_dens <- matrix(rowsums(dens_matrix), ncol = n_k)
+    log_dens <- Reduce("+", dens_list)
     shift_mat <- log_dens - matrixStats::rowMaxs(log_dens)
 
     store <- list()
@@ -329,21 +334,25 @@ MVN_weights <- function(ex_coords) {
     if (deriv >= 1) {
       dens_list <- list()
       for (n in 1:dim_num) {
-        dens_list[[n]] <-  llk_gaussian(rep(x[, n], each = nrow(eta)),
-                                        param = list(rep(eta[, n], n_k), 1 / sqrt(tau[n])),
-                                        deriv = 2)
+        dens_list[[n]] <- llk_gaussian2(matrix(x[,n], ncol = n_k, nrow = nrow(eta)),
+                                        param = list(eta[,n], 1/sqrt(tau[n])),
+                                        deriv = deriv)
+        # dens_list[[n]] <-  llk_gaussian(rep(x[, n], each = nrow(eta)),
+        #                                 param = list(rep(eta[, n], n_k), 1 / sqrt(tau[n])),
+        #                                 deriv = 2)
       }
 
       detas <- sapply(dens_list, "[[", "d1")[1, ]
-
       dtaus <- sapply(dens_list, "[[", "d1")[2, ]
 
       f_eta_out <- list()
       f_tau_out <- list()
 
       for (i in 1:dim_num) {
-        l1 <- matrix(detas[[i]], ncol = n_k)
-        l2 <- matrix(dtaus[[i]], ncol = n_k)
+        # l1 <- matrix(detas[[i]], ncol = n_k)
+        # l2 <- matrix(dtaus[[i]], ncol = n_k)
+        l1 <- detas[[i]]
+        l2 <- dtaus[[i]]
 
         f_eta_out[[i]] <- store$f_eval * (l1 - (rowsums(l1 * expshift)) / rs_expshift)
         f_tau_out[[i]] <- store$f_eval * (l2 - (rowsums(l2 * expshift)) / rs_expshift)
@@ -358,11 +367,15 @@ MVN_weights <- function(ex_coords) {
 
         for (alpha in 1:dim_num) {
           out[[alpha]] <- list()
-          dalpha2 <- matrix(dens_list[[alpha]]$d2[[1]], ncol = n_k)
-          dalpha1 <- matrix(dens_list[[alpha]]$d1[[1]], ncol = n_k)
+          # dalpha2 <- matrix(dens_list[[alpha]]$d2[[1]], ncol = n_k)
+          # dalpha1 <- matrix(dens_list[[alpha]]$d1[[1]], ncol = n_k)
+          dalpha1 <- dens_list[[alpha]]$d1[[1]]
+          dalpha2 <- dens_list[[alpha]]$d2[[1]]
 
           for (beta in 1:dim_num) {
-            dbeta1 <- matrix(dens_list[[beta]]$d1[[1]], ncol = n_k)
+            # dbeta1 <- matrix(dens_list[[beta]]$d1[[1]], ncol = n_k)
+            dbeta1 <- dens_list[[beta]]$d1[[1]]
+
             if (alpha == beta) {
               d2 <- (dalpha2 + dalpha1**2)
             } else {
@@ -381,11 +394,15 @@ MVN_weights <- function(ex_coords) {
         out <- list()
         for (alpha in 1:dim_num) {
           out[[alpha]] <- list()
-          dalpha2 <- matrix(dens_list[[alpha]]$d2[[2]], ncol = n_k)
-          dalpha1 <- matrix(dens_list[[alpha]]$d1[[1]], ncol = n_k)
+          # dalpha2 <- matrix(dens_list[[alpha]]$d2[[2]], ncol = n_k)
+          # dalpha1 <- matrix(dens_list[[alpha]]$d1[[1]], ncol = n_k)
+          dalpha2 <- dens_list[[alpha]]$d2[[2]]
+          dalpha1 <- dens_list[[alpha]]$d1[[1]]
 
           for (beta in 1:dim_num) {
-            dbeta1 <- matrix(dens_list[[beta]]$d1[[2]], ncol = n_k)
+            # dbeta1 <- matrix(dens_list[[beta]]$d1[[2]], ncol = n_k)
+            dbeta1 <- dens_list[[beta]]$d1[[2]]
+
             if (alpha == beta) {
               d2 <- (dalpha2 + (dalpha1 * dbeta1))
             } else {
@@ -406,11 +423,15 @@ MVN_weights <- function(ex_coords) {
         out <- list()
         for (alpha in 1:dim_num) {
           out[[alpha]] <- list()
-          dalpha2 <- matrix(dens_list[[alpha]]$d2[[3]], ncol = n_k)
-          dalpha1 <- matrix(dens_list[[alpha]]$d1[[2]], ncol = n_k)
+          # dalpha2 <- matrix(dens_list[[alpha]]$d2[[3]], ncol = n_k)
+          # dalpha1 <- matrix(dens_list[[alpha]]$d1[[2]], ncol = n_k)
+          dalpha2 <- dens_list[[alpha]]$d2[[3]]
+          dalpha1 <- dens_list[[alpha]]$d1[[2]]
 
           for (beta in 1:dim_num) {
-            dbeta1 <- matrix(dens_list[[beta]]$d1[[2]], ncol = n_k)
+            # dbeta1 <- matrix(dens_list[[beta]]$d1[[2]], ncol = n_k)
+            dbeta1 <- dens_list[[beta]]$d1[[2]]
+
             if (alpha == beta) {
               d2 <- (dalpha2 + dalpha1**2)
             } else {
@@ -636,20 +657,24 @@ id <- function() {
   get_derivs <- function(eta, theta, deriv) {
     store <- list()
     if (deriv >= 0) {
-      store$f_eval <- matrix(1)
+      if (!is.null(eta)) {
+        store$f_eval <- matrix(1, nrow = nrow(eta), ncol = 1)
+      } else {
+        store$f_eval <- matrix(1, nrow = 1, ncol = 1)
+      }
       if (deriv >= 1) {
         zero_mat <- NULL
 
-        store$f_eta_eval <- NULL
+        store$f_eta_eval <- matrix(0, nrow = nrow(eta), ncol = 0)
 
-        store$f_theta_eval <- NULL
+        store$f_theta_eval <- matrix(0, nrow = nrow(eta), ncol = 0)
 
         if (deriv >= 2) {
-          store$f_eta2_eval <- NULL
+          store$f_eta2_eval <- matrix(0, nrow = nrow(eta), ncol = 0)
 
-          store$f_eta_theta_eval <- NULL
+          store$f_eta_theta_eval <- matrix(0, nrow = nrow(eta), ncol = 0)
 
-          store$f_theta2_eval <- NULL
+          store$f_theta2_eval <- matrix(0, nrow = nrow(eta), ncol = 0)
         }
       }
     }
@@ -665,7 +690,7 @@ id <- function() {
   }
 
   init_func <- function(densities) {
-    return(list(init_theta = NULL, init_mu = NULL))
+    return(list(init_theta = NULL, init_mu = matrix(ncol=0,nrow=nrow(densities))))
   }
 
   name <- "id"

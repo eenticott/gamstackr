@@ -194,6 +194,9 @@ create_stacker <- function(experts, weight_func, type, loss = NULL) {
   stacker$weight_func <- weight_func
   stacker$experts_fitted <- FALSE
   stacker$coef <- NULL
+  stacker$sp <- NULL
+  stacker$scale <- NULL
+
 
   # Check number of experts match number of weights
   if (length(experts) != attr(weight_func, "num_weights")) {
@@ -243,8 +246,16 @@ create_stacker <- function(experts, weight_func, type, loss = NULL) {
     if (type == "loss") {
       pre_fam <- LossStack(preds, loss, weight_func, RidgePen)
     }
-    fitted_stack <- gam(formula_list, data = stack, family = pre_fam, start = stacker$coef)
-    stacker$coef <- fitted_stack$coef
+
+    if (!is.null(stacker$sp)) {
+      fitted_stack <- gam(formula_list, data = stack, family = pre_fam,
+                          in.out=list(sp=stacker$sp, scale=stacker$scale))
+    } else {
+      fitted_stack <- gam(formula_list, data = stack, family = pre_fam)
+    }
+
+    stacker$sp <- fitted_stack$sp
+    stacker$scale <- fitted_stack$scale
     stacker$fitted_stack <- fitted_stack
     return(stacker)
   }

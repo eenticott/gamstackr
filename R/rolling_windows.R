@@ -51,6 +51,20 @@ create_windows <- function(df, initial_size, window_size, horizon_size, step_siz
     i <- i + 1
     cutoff <- cutoff + step_size
   }
+  # Add final window
+  if (cutoff + horizon_size - step_size < N) {
+    remaining = N - (cutoff + horizon_size - step_size)
+    if (type == "expanding") {
+      train_idx <- 1:cutoff
+      test_idx <- (cutoff + 1):(cutoff + remaining)
+    } else {
+      train_idx <- (cutoff - window_size + 1):(cutoff)
+    }
+    test_idx <- (cutoff + 1):(cutoff + remaining)
+
+    training_idx[[i]] <- train_idx
+    testing_idx[[i]] <- test_idx
+  }
   return(structure(df, "training_windows" = training_idx, "testing_windows" = testing_idx))
 }
 

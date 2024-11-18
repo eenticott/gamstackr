@@ -115,15 +115,29 @@ test_that("ordinal derivs", {
 
 test_that("mvn derivs", {
   x <- matrix(rnorm(15), nrow = 3, ncol = 5)
-  wf <- MVN_weights_cpp(x, dim_num = 3)
+  wf <- MVN_weights_cpp(x)
   expect_true(check_deriv(wf, 1, deriv = 2))
 
   x <- matrix(rnorm(5), nrow = 1, ncol = 5)
-  wf <- MVN_weights_cpp(x, dim_num = 1)
+  wf <- MVN_weights_cpp(x)
   expect_true(check_deriv(wf, 2, deriv = 2))
 
   x <- matrix(rnorm(15), nrow = 3, ncol = 5)
-  wf <- MVN_weights_cpp(x, dim_num = 3)
+  wf <- MVN_weights_cpp(x)
+  expect_true(check_deriv(wf, 5, deriv = 2))
+})
+
+test_that("mvn derivs", {
+  x <- matrix(rnorm(15), nrow = 3, ncol = 5)
+  wf <- MVN_weights(x)
+  expect_true(check_deriv(wf, 1, deriv = 2))
+
+  x <- matrix(rnorm(5), nrow = 1, ncol = 5)
+  wf <- MVN_weights(x)
+  expect_true(check_deriv(wf, 2, deriv = 2))
+
+  x <- matrix(rnorm(15), nrow = 3, ncol = 5)
+  wf <- MVN_weights(x)
   expect_true(check_deriv(wf, 5, deriv = 2))
 })
 

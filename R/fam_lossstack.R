@@ -676,7 +676,21 @@ LossStack <- function(preds, loss, weights, RidgePen = 1e-5) {
     if (deriv == 1) {
       deriv = 2 # My deriv function returns hessian on 2.
     }
-    lpi <- family$getlpi()
+    orig_lpi <- family$getlpi()
+    given_lpi <- attr(x,"lpi")
+    lpi <- given_lpi
+    if (!is.null(attr(x, "drop"))) {
+      drop_idx <- attr(x, "drop")
+      orig_nx <-  Reduce("+",lapply(orig_lpi, function(lpi_ii) length(lpi_ii)))
+      cur_nx <- Reduce("+",lapply(lpi, function(lpi_ii) length(lpi_ii)))
+      theta_pad_idx <- drop_idx[drop_idx > orig_nx] - orig_nx
+      lpi_pad_idx <- theta_pad_idx + cur_nx
+      for (idx in lpi_pad_idx) {
+        coef <- c(coef[1:(idx-1)], 0, coef[idx:length(coef)])
+      }
+    }
+
+
     p <- lapply(lpi, function(lpi_ii) length(lpi_ii))
 
     list_of_beta <- list()
@@ -701,7 +715,45 @@ LossStack <- function(preds, loss, weights, RidgePen = 1e-5) {
                            preds = getPreds(),
                            y = y,
                            deriv = deriv)
-    return(out)
+
+    l <- out$l
+    lb <- out$lb
+    lbb <- out$lbb
+
+    nbeta <- do.call("sum", lapply(list_of_beta, length))
+    ntheta <- length(theta)
+
+    # theta penalty
+    t_pen <- attr(weights, "theta_pen")(theta, deriv = deriv)
+    theta_pen <- t_pen$p
+    if (is.null(theta_pen)) {
+      theta_pen <- 0
+    }
+    theta_pen_d1 <- t_pen$pt
+    theta_pen_d2 <- t_pen$ptt
+
+    beta_pen <- sum(unlist(list_of_beta)^2)
+    beta_pen_d1 <- 2 * unlist(list_of_beta)
+    beta_pen_d2 <- 2 * diag(nbeta)
+
+    l_pen <- RidgePen * (beta_pen + theta_pen)
+    l <- l - l_pen
+
+    if (deriv > 0) {
+      lb_pen <- RidgePen * c(beta_pen_d1, theta_pen_d1)
+      d_penlist <- c(list(beta_pen_d2, theta_pen_d2))
+      lbb_pen <- RidgePen * as.matrix(Matrix::bdiag(d_penlist[!sapply(d_penlist, is.null)]))
+
+      lb[1:length(lb_pen)] <- lb[1:length(lb_pen)] - lb_pen
+      lbb[1:length(lb_pen),1:length(lb_pen)] <- lbb[1:length(lb_pen),1:length(lb_pen)] - lbb_pen
+    }
+
+
+    if (exists("lpi_pad_idx")) {
+      return(list(l=l, lb = lb[-lpi_pad_idx], lbb = lbb[-lpi_pad_idx, -lpi_pad_idx]))
+    }
+
+    return(list(l=l,lb=lb,lbb=lbb))
   }
 
   jacobian <- function(eta, jj, ...) {

@@ -133,8 +133,6 @@ pinball_loss <- function(tau) {
       }
     }
     sigma <- getSigma()
-    print(sigma)
-    #print(sigma)
     lambda <- 0.01*sigma
     sigma <- 1
     loss <- (tau-1) * (y-yhat)/sigma + lambda*(log1px((y-yhat)/(lambda*sigma)))

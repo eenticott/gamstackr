@@ -557,57 +557,15 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
     if (jj == 1 && K == 1){
       return(eta * 0)
     }
-    if (jj < K) {
-      alpha <- cbind(1, exp(eta[,1:(K-1)])) / rowSums(cbind(1, exp(eta[,1:(K-1)])))
-      # D alpha / D eta
-      DaDe <- sapply(1:(K - 1), function(.kk) {
-        alpha[, jj] * (as.numeric(jj == .kk + 1) - alpha[, .kk + 1])
-      })
-      if(nrow(alpha) == 1) { DaDe <- matrix(DaDe, nrow = 1) }
-      return(list(DmuDeta = DaDe, eta_idx = 1:(K-1)))
-    }
-    # Inner weight jacobian (jj >= K)
-    k <- jj - K # get index excluding outer etas
-    coefs <- getCoef()
-    n_each_weight <- getNweights()
-    # get which branch of inner weights we need
-    w <- min(which(k <= cumsum(n_each_weight)))
-    w_idx <- k - c(0, cumsum(n_each_weight))[w]
-    # use for indexing correctly
-    each_eta <- c(0,cumsum(n_each_eta))
-    each_theta <- c(0,cumsum(n_each_theta))
-    ntheta <- do.call("sum", n_each_theta)
-    neta <- do.call("sum", n_each_eta)
-    ncoef <- length(coefs)
 
-    # Need list_of_etaT[[w]] and list_of_theta[[w]]
+    store <- weight(eta, theta, deriv = 1)
+    neta <- attr(weight, "neta")
+    ntheta <- attr(weight, "ntheta")
 
-    # Get indexes of inner etas (along lpi) and thetas (along coef vectors)
-    eta_idx <- (K-1 + each_eta[w] + 1):(K-1 + each_eta[w+1])
-    theta_idx <- (ncoef - ntheta + each_theta[w] + 1):(ncoef - ntheta + each_theta[w+1])
-
-    etaT <- eta[,eta_idx]
-    theta <- coefs[theta_idx]
-
-    derivs <- .internals()[["eval_deriv"]](inners[[w]], etaT, theta, deriv = 1)
-
-    if (is.list(derivs$f_eta_eval)) {
-      eta_deriv <- matrix(nrow = nrow(eta),ncol = length(derivs$f_eta_eval))
-      for (i in 1:length(derivs$f_eta_eval)) {
-        eta_deriv[,i] <- derivs$f_eta_eval[[i]][,w_idx]
-      }
-    } else {
-      eta_deriv <- as.matrix(derivs$f_eta_eval[,w_idx])
-    }
-
-    if (is.list(derivs$f_theta_eval)) {
-      theta_deriv <- matrix(nrow = nrow(eta),ncol = length(derivs$f_theta_eval))
-      for (i in 1:length(derivs$f_theta_eval)) {
-        theta_deriv[,i] <- derivs$f_theta_eval[[i]][,w_idx]
-      }
-    } else {
-      theta_deriv <- as.matrix(derivs$f_theta_eval[,w_idx])
-    }
+    eta_deriv <- sapply(store$f_eta_eval, function(mat) mat[,jj])
+    theta_deriv <- sapply(store$f_eta_eval, function(mat) mat[,jj])
+    eta_idx <- 1:neta
+    theta_idx <- (neta+1):(neta+ntheta)
 
     return(list(DmuDeta = eta_deriv, DmuDtheta = theta_deriv, eta_idx = eta_idx, theta_idx = theta_idx))
   }

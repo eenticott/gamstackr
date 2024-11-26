@@ -1234,7 +1234,7 @@ Latent <- function(K, q) {
 
   init_func <- function(scores) {
     aug_weights <- multinomial(K)
-    init_aug_eta <- attr(aug_weights, "init_func")(scores)
+    init_aug_eta <- attr(aug_weights, "init_func")(scores)$init_mu
     init_eta <- init_aug_eta[,1:neta]
     b0s <- rep(0, K-1)
     vs <- list()

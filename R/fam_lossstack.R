@@ -561,6 +561,10 @@ LossStack <- function(preds, loss, weights, RidgePen = 1e-5) {
   assign(".loss",loss, envir = environment())
   getLoss <- function() get(".loss")
 
+  assign(".coef", NULL, envir = environment())
+  getCoef <- function() get(".coef")
+  putCoef <- function(.x) assign(".coef", .x, envir = environment(sys.function()))
+
   residuals <- function(object, type=c("deviance","pearson","response")) {
     return(as.matrix(object$y)[, 1])
   }
@@ -757,7 +761,39 @@ LossStack <- function(preds, loss, weights, RidgePen = 1e-5) {
   }
 
   jacobian <- function(eta, jj, ...) {
-    return(NULL)
+    # Values we need
+    # Inner functions
+    weight <- getweightf()
+    # K
+    K <- attr(weight, "num_weights")
+    # lpi
+    lpi <- getlpi()
+    coef <- getCoef()
+    neta <- attr(weight, "neta")
+    ntheta <- attr(weight, "ntheta")
+    theta <- tail(coef, ntheta)
+    if ( !is.matrix(eta) ){
+      eta <- as.matrix(eta)
+    }
+    #browser()
+
+    # Consider outer and inner weights separately
+    # --------------------------------------------------------------------------
+    # Outer weight jacobian (jj in (1:K-1))
+
+    # Special case, only one multinomial weight equal to one
+    if (jj == 1 && K == 1){
+      return(eta * 0)
+    }
+
+    store <- weight(eta, theta, deriv = 1)
+
+    eta_deriv <- sapply(store$f_eta_eval, function(mat) mat[,jj])
+    theta_deriv <- sapply(store$f_theta_eval, function(mat) mat[,jj])
+    eta_idx <- 1:neta
+    theta_idx <- (neta+1):(neta+ntheta)
+
+    return(list(DmuDeta = eta_deriv, DmuDtheta = theta_deriv, eta_idx = eta_idx, theta_idx = theta_idx))
   }
 
   predict <- function(family,se=FALSE,eta=NULL,y=NULL,X=NULL,
@@ -797,6 +833,8 @@ LossStack <- function(preds, loss, weights, RidgePen = 1e-5) {
                  initialize = initialize,
                  jacobian = jacobian,
                  n_theta = n_theta,
+                 getCoef = getCoef,
+                 putCoef = putCoef,
                  mu.eta = stats[[1]]$mu.eta,
                  # postproc=postproc,
                  residuals=residuals,

@@ -543,7 +543,10 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
     K <- attr(weight, "num_weights")
     # lpi
     lpi <- getlpi()
-
+    coef <- getCoef()
+    neta <- attr(weight, "neta")
+    ntheta <- attr(weight, "ntheta")
+    theta <- tail(coef, ntheta)
     if ( !is.matrix(eta) ){
       eta <- as.matrix(eta)
     }
@@ -559,11 +562,9 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
     }
 
     store <- weight(eta, theta, deriv = 1)
-    neta <- attr(weight, "neta")
-    ntheta <- attr(weight, "ntheta")
 
     eta_deriv <- sapply(store$f_eta_eval, function(mat) mat[,jj])
-    theta_deriv <- sapply(store$f_eta_eval, function(mat) mat[,jj])
+    theta_deriv <- sapply(store$f_theta_eval, function(mat) mat[,jj])
     eta_idx <- 1:neta
     theta_idx <- (neta+1):(neta+ntheta)
 

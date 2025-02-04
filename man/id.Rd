@@ -6,11 +6,6 @@
 \usage{
 id()
 }
-\arguments{
-\item{num_weights}{Integer: How many equally weighted parts}
-
-\item{N}{Integer: Number of data points}
-}
 \value{
 Object of derivatives for equally weighted models
 }

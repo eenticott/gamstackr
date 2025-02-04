@@ -4,12 +4,16 @@
 \alias{create_stacker}
 \title{Create a stacking object from experts and inner functions.}
 \usage{
-create_stacker(experts, inners)
+create_stacker(experts, weight_func, type, loss = NULL)
 }
 \arguments{
 \item{experts}{List of expert objects created by \code{create_expert}.}
 
-\item{inners}{Function that determines how weights}
+\item{weight_func}{Function that determines expert weights.}
+
+\item{type}{"dens" or "loss" - Whether densities or predictions are being stacked.}
+
+\item{loss}{Loss function you want to optimise with stacking. Only needed if type = "loss".}
 }
 \value{
 Stacking object that can take data and return predicted weights for experts.

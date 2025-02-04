@@ -4,10 +4,10 @@
 \alias{ordinal}
 \title{Produces an object containing derivatives for ordered stacking}
 \usage{
-ordinal(num_weights)
+ordinal(K)
 }
 \arguments{
-\item{num_weights}{Integer: How many weights in the ordering}
+\item{K}{Integer: How many weights in the ordering}
 }
 \value{
 List of functions for finding ordinal weights

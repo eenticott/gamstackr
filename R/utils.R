@@ -110,3 +110,30 @@ bind_output <- function(list_of_lists, type) {
   internals[["bind_output"]] <- bind_output
   return(internals)
 }
+
+#' Title
+#'
+#' @param list_of_lists
+#'
+#' @return
+#' @export
+#'
+#' @examples
+bind_list <- function(list_of_lists) {
+  do.call("rbind", lapply(list_of_lists, function(x) do.call("cbind", x)))
+}
+
+
+#' Plot a set of weights as a stacked area.
+#'
+#' @param W An N by K matrix containing outputted weights.
+#'
+#' @return A ggplot stacked area plot.
+#' @export
+plot_weights <- function(W) {
+  W_df <- as.data.frame(W) %>%  rename_with(~ gsub("^V", "Expert ", .), starts_with("V")) %>% mutate(Date = stack_test$Date) %>%
+    pivot_longer(cols = -Date,names_to = "Model", values_to = "Weight")
+
+  out_plot <- ggplot(W_df, aes(x = Date, y = Weight, fill = Model)) + geom_area() + theme_classic()
+  return(out_plot)
+}

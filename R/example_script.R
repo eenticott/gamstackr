@@ -9,6 +9,30 @@
 # ex4 <- lm(Sepal.Length ~ Petal.Width + Sepal.Width, data = iris)
 # ex5 <- lm(Sepal.Length ~ Petal.Width + Petal.Length, data = iris)
 #
+# pred1 <- predict(ex1)
+# pred2 <- predict(ex2)
+# pred3 <- predict(ex3)
+# pred4 <- predict(ex4)
+# pred5 <- predict(ex5)
+#
+# preds <- cbind(pred1, pred2, pred3, pred4, pred5)
+#
+# pre_fam <- LossStack(preds, loss=pinball_loss(0.5), nested(multinomial(2), list(ordinal(4), id())))
+# m1 <- gam(formula = list(Sepal.Length ~ Sepal.Width,~Sepal.Width), family = pre_fam, data = iris)
+#
+# MSE1 <- mean((rowSums(predict(m1, type = "response") * preds) - iris$Sepal.Length)^2)
+# MAE1 <- mean(abs(rowSums(predict(m1, type = "response") * preds) - iris$Sepal.Length))
+#
+# pre_fam <- LossStack(preds, loss=pinball_loss(0.5), ordinal(5))
+# m2 <- gam(formula = list(Sepal.Length ~ 1), family = pre_fam, data = iris)
+#
+# MSE2 <- mean((rowSums(predict(m2, type = "response") * preds) - iris$Sepal.Length)^2)
+# MAE2 <- mean(abs(rowSums(predict(m2, type = "response") * preds) - iris$Sepal.Length))
+#
+# c(MSE1, MAE1, MSE2, MAE2)
+#
+#
+#
 # den1 <- matrix(dnorm(iris$Sepal.Length, predict(ex1), sd(ex1$residuals), log = TRUE))
 # den2 <- matrix(dnorm(iris$Sepal.Length, predict(ex2), sd(ex2$residuals), log = TRUE))
 # den3 <- matrix(dnorm(iris$Sepal.Length, predict(ex3), sd(ex3$residuals), log = TRUE))
@@ -16,13 +40,40 @@
 # den5 <- matrix(dnorm(iris$Sepal.Length, predict(ex5), sd(ex5$residuals), log = TRUE))
 #
 # stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5)), list(ordinal(5)))
-# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5), cbind(den1, den2, den3)), list(ordinal(5), ordinal(3)))
 # stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5)), list(MVN_weights(x=matrix(c(1,2,3,4,5),nrow=1))))
 # stack <- gam(list(Sepal.Length ~ Species + Sepal.Width), data = iris, family = stack_fam)
+# #
+# #
+# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5), cbind(den1, den2, den3)), list(ordinal(5), ordinal(3)))
 #
+# start = Sys.time()
+# stack1 <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species, ~Species), data = iris, family = stack_fam)
+# end = Sys.time()
+# end-start
 #
-# #stack <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species), data = iris, family = stack_fam)
+# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5, den1, den2, den3)), list(nested(multinomial(2), list(ordinal(5), ordinal(3)))))
 #
+# start = Sys.time()
+# stack2 <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species, ~Species), data = iris, family = stack_fam)
+# end = Sys.time()
+# end-start
+#
+# stack_fam = DensStack(cbind(den1, den2, den3, den4, den5, den1, den2, den3), nested(multinomial(2), list(ordinal(5), ordinal(3))))
+#
+# start = Sys.time()
+# stack3 <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species, ~Species), data = iris, family = stack_fam)
+# end = Sys.time()
+# end-start
+#
+# stack_fam = NestedStack(list(cbind(den1, den2, den3, den4, den5, den1, den2, den3, den1, den2, den3)),
+#                         inner_funcs = list(nested(ordinal(3), list(ordinal(5), ordinal(3), ordinal(3)))))
+#
+# start = Sys.time()
+# stack4 <- gam(list(Sepal.Length ~ Species + Sepal.Width,  ~Species, ~Species, ~Species), data = iris, family = stack_fam)
+# end = Sys.time()
+# end-start
+
+
 # W <- predict(stack, type = "response")
 #
 # barplot(t(unique(W[,1:3])), col = unique(iris$Species),

@@ -4,6 +4,8 @@ exportPattern("^[[:alpha:]]+")
 
 importFrom("graphics", "legend", "lines")
 importFrom("stats", "predict")
+importFrom("stats", "dnorm")
+importFrom("utils", "setTxtProgressBar", "txtProgressBar")
 export(.internals)
 export(MVN_weights)
 export(NestedStack)

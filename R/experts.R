@@ -90,6 +90,7 @@ create_expert <- function(fit_func, pred_func = NULL, sim_func = NULL, dens_func
 evaluate_expert <- function(expert, windower, data, type = "predict") {
   list_of_dens <- NULL
   list_of_preds <- NULL
+  list_of_models <- list()
 
   if (!inherits(expert, "expert")) {
     out_list <- list()
@@ -101,6 +102,7 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
     }
     return(out_list)
   }
+
   windowed_dat <- windower(data)
   list_of_preds <- list()
   model <- NULL
@@ -120,12 +122,12 @@ evaluate_expert <- function(expert, windower, data, type = "predict") {
       list_of_preds[[i]] <- expert$predict(expert, windowed_dat[attr(windowed_dat, "testing_windows")[[i]],])
     }
     if ("model" %in% type) {
-      model <- expert$fitted_model
+      list_of_models[[i]] <- expert$fitted_model
     }
     setTxtProgressBar(pb, i)
   }
   close(pb)
-  return(list("preds" = list_of_preds, "dens" = list_of_dens, "model" = model))
+  return(list("preds" = list_of_preds, "dens" = list_of_dens, "model" = list_of_models))
 }
 
 #' Evaluate a set of experts with weighting functions.

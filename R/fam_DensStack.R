@@ -1,30 +1,15 @@
-# get_ll_dens_derivs_cpp <- function(list_of_beta,
-#                             list_of_X,
-#                             theta,
-#                             weight,
-#                             log_dens,
-#                             deriv = 0) {
-#   out <- get_ll_dens_derivs_cpp(list_of_beta, list_of_X, theta, weight, log_dens, get_list_of_eta, deriv)
-#
-#   dbb <- out$dbb
-#   dbt <- out$dbt
-#   dtt <- out$dtt
-#
-#   my_t <- function(x) {
-#     if (is.null(x)) return(NULL)
-#     return(t(x))
-#   }
-#
-#   hess <- NULL
-#
-#   if (deriv > 1) {
-#     hess <- rbind(cbind(dbb, dbt),
-#                   cbind(my_t(dbt), dtt))
-#   }
-#
-#
-#   return(list(l = out$l, lb = out$lb, lbb = hess))
-# }
+
+#' @title Density Stacking Family for mgcv
+#' @description
+#' Provides a custom mgcv family object for density stacking using flexible weight functions.
+#' Includes efficient likelihood, gradient, and Hessian calculations for use in stacking models.
+#'
+#' @details
+#' This file defines the DensStack family and supporting functions for use in stacking density models.
+#' The main entry point is `DensStack()`, which returns an mgcv-compatible family object.
+#'
+#' @seealso NestedStack, LossStack, MVN_weights, ordinal
+
 
 # get_ll_dens_derivs <- function(list_of_beta,
 #                             list_of_X,
@@ -125,10 +110,27 @@
 # }
 
 
+
+#' Efficient row sum for density stacking
+#' @param exp_log_a_max Vector of exponentiated row maxima
+#' @param exp_log_a_diff Matrix of exponentiated differences
+#' @param b Matrix to multiply
+#' @return Vector of row sums
 rs_AB <- function(exp_log_a_max, exp_log_a_diff, b) {
-  exp_log_a_max*(Rfast::rowsums(exp_log_a_diff*b))
+  exp_log_a_max * (Rfast::rowsums(exp_log_a_diff * b))
 }
 
+
+#' Compute log-likelihood and derivatives for density stacking
+#' @param list_of_beta List of beta coefficients for each expert
+#' @param list_of_X List of design matrices for each expert
+#' @param theta Vector of extra parameters for the weight function
+#' @param weight Weight function object
+#' @param log_dens Matrix of log-densities (N x K)
+#' @param exp_log_dens_maxs Vector of exponentiated row maxima
+#' @param exp_log_dens_diff Matrix of exponentiated differences
+#' @param deriv Integer: 0 = value, 1 = gradient, 2 = Hessian
+#' @return List with elements l (log-likelihood), lb (gradient), lbb (Hessian)
 get_ll_dens_derivs <- function(list_of_beta,
                                list_of_X,
                                theta,
@@ -238,9 +240,17 @@ get_ll_dens_derivs <- function(list_of_beta,
 }
 
 
+
+#' Density Stacking mgcv Family Constructor
+#'
+#' @param logP Matrix of log-densities (N x K)
+#' @param weight Weight function object (see e.g. MVN_weights, ordinal)
+#' @param RidgePen Numeric, ridge penalty for regularization
+#' @return mgcv family object for use in stacking
+#' @export
 DensStack <- function(logP, weight, RidgePen = 1e-5) {
-  ### mgcv family for nested stacking
-  ### inner_funcs is list of lists of inner weight functions
+  # mgcv family for density stacking
+  # weight: weight function object (see MVN_weights, ordinal, etc.)
 
   ## Prep
   link <- "identity"
@@ -322,13 +332,15 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
   }
 
   #######
+
+  #' @description Pre-initialize GAM object for density stacking
+  #' @param G Pre-fit gam object
+  #' @return List with updated X, term.names, family, Sl
   preinitialize <- function(G) {
-    ## G is a gam pre-fit object. Pre-initialize can manipulate some of its
-    ## elements, returning a named list of the modified ones.
-    ## A) extends model matrix with dummy
+    # Extends model matrix with dummy columns for theta parameters
     nbeta <- ncol(G$X)
     atr <- attributes(G$X)
-    G$X <- cbind(G$X,matrix(0,nrow(G$X),ntheta)) ## add dummy columns to G$X
+    G$X <- cbind(G$X, matrix(0, nrow(G$X), ntheta))
     attr(G$X, "lpi") <- atr$lpi
     attr(G$X, "dim") <- c(nrow(G$X), ncol(G$X))
     putlpi(atr$lpi)
@@ -336,58 +348,54 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
       attr(G$Sl, "E") <- cbind(attr(G$Sl, "E"),
                                matrix(0, nbeta, ntheta))
     if (ntheta != 0) {
-      G$term.names <- c(G$term.names, paste("my_thetas", 1:ntheta,
-                                            sep = "."))
+      G$term.names <- c(G$term.names, paste("my_thetas", 1:ntheta, sep = "."))
     }
-    ## pad out sqrt of balanced penalty matrix to account for extra params
+    list(X = G$X, term.names = G$term.names, family = G$family, Sl = G$Sl)
+  }
 
-    list(X=G$X,term.names=G$term.names,family=G$family, Sl = G$Sl)
-  } ## preinitialize
 
-  # Initialize starting parameters
+  #' @description Expression to initialize starting parameters for density stacking
   initialize <- expression({
-    my_init_fun <- function(y, nobs, E, x, family, offset){
-      # Get required parameters
+    my_init_fun <- function(y, nobs, E, x, family, offset) {
+      # Get required parameters and initialize coefficients for eta and theta
       logP <- family$getLogP()
       P <- family$getP()
       weight <- family$getWeight()
-      lpi <- attr(x,"lpi")
+      lpi <- attr(x, "lpi")
       p <- lapply(lpi, function(lpi_ii) length(lpi_ii))
       nbeta <- do.call("sum", p)
       neta <- attr(weight, "neta")
       ntheta <- attr(weight, "ntheta")
 
       coefs <- rep(0, ncol(x))
-      use.unscaled <- if (!is.null(attr(E,"use.unscaled"))) TRUE else FALSE
+      use.unscaled <- if (!is.null(attr(E, "use.unscaled"))) TRUE else FALSE
       ridgePen <- family$getRidgePen()
 
-      # Penreg func
+      # Penalized regression helper
       start_coef <- function(x1, e1, y1) {
         if (!is.null(ridgePen)) {
           sqrt(ridgePen)
-          e1rp <- matrix(0, nrow = nrow(e1),
-                         ncol = ncol(e1))
+          e1rp <- matrix(0, nrow = nrow(e1), ncol = ncol(e1))
           diag(e1rp) <- sqrt(ridgePen)
           e1 <- e1 + e1rp
         }
         if (use.unscaled) {
-          qrx <- qr(rbind(x1,e1))
-          x1 <- rbind(x1,e1)
-          startji <- qr.coef(qr(x1),c(y1,rep(0,nrow(E))))
+          qrx <- qr(rbind(x1, e1))
+          x1 <- rbind(x1, e1)
+          startji <- qr.coef(qr(x1), c(y1, rep(0, nrow(E))))
           startji[!is.finite(startji)] <- 0
-        } else startji <- penReg(x1,e1,y1)
-
+        } else startji <- penReg(x1, e1, y1)
         return(startji)
       }
 
-      # Get intial eta and theta from weight function
+      # Get initial eta and theta from weight function
       init_pars <- attr(weight, "init_func")(logP)
 
       # Initial betas
       list_of_X <- list()
       list_of_beta <- list()
-      for (jj in 1:neta) { # Multi eta case
-        y <- init_pars$init_mu[,jj]
+      for (jj in 1:neta) {
+        y <- init_pars$init_mu[, jj]
         x1 <- x[, lpi[[jj]], drop = FALSE]
         e1 <- E[, lpi[[jj]], drop = FALSE]
         coefs[lpi[[jj]]] <- start_coef(x1, e1, y)
@@ -397,14 +405,14 @@ DensStack <- function(logP, weight, RidgePen = 1e-5) {
 
       # Initial thetas
       if (ntheta > 0) {
-        coefs[(nbeta+1):(nbeta+ntheta)] <- init_pars$init_theta
+        coefs[(nbeta + 1):(nbeta + ntheta)] <- init_pars$init_theta
       }
       return(coefs)
     }
-    if(is.null(start)){
+    if (is.null(start)) {
       start <- my_init_fun(y = y, nobs = nobs, E = E, x = x, family = family, offset = offset)
     }
-  }) ## initialize
+  })
 
   ll <- function(y,x,coef,wt,family,offset=NULL,deriv=0,
                  dlb=0,d2b=0,Hp=NULL,rank=0,fh=NULL,D=NULL) {

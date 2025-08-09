@@ -1,5 +1,14 @@
 # list utils
 
+#' Subtract elements of one list from another
+#'
+#' This function subtracts corresponding elements of list l2 from list l1.
+#'
+#' @param l1 First list
+#' @param l2 Second list (to be subtracted from l1)
+#'
+#' @return A list containing the differences between corresponding elements
+#'
 list_take_list <- function(l1, l2) {
   out <- list()
   if (length(l1) != length(l2)) {
@@ -11,6 +20,15 @@ list_take_list <- function(l1, l2) {
   out
 }
 
+#' Multiply each element of a list by corresponding element of a vector
+#'
+#' This function multiplies each element of list l by the corresponding element of vector v.
+#'
+#' @param l A list of elements
+#' @param v A vector of multipliers
+#'
+#' @return A list containing the products
+#'
 list_by_vector <- function(l, v) {
   out <- list()
   for (i in 1:length(v)) {
@@ -19,6 +37,17 @@ list_by_vector <- function(l, v) {
   return(out)
 }
 
+#' Multiply elements of two lists
+#'
+#' This function multiplies corresponding elements of two lists, either elementwise
+#' or using matrix multiplication.
+#'
+#' @param list1 First list of elements
+#' @param list2 Second list of elements
+#' @param elementwise Logical; if TRUE, performs elementwise multiplication instead of matrix multiplication
+#'
+#' @return A list containing the products
+#'
 list_by_list <- function(list1, list2, elementwise = FALSE) {
   if (!is.list(list1)) {
     list1 <- list(list1)
@@ -46,6 +75,15 @@ list_by_list <- function(list1, list2, elementwise = FALSE) {
   return(out)
 }
 
+#' Elementwise multiplication of two lists
+#'
+#' This function performs elementwise multiplication of corresponding elements in two lists.
+#'
+#' @param list1 First list of elements
+#' @param list2 Second list of elements
+#'
+#' @return A list containing the elementwise products
+#'
 list_times_list <- function(list1, list2) {
   out <- list()
   for (i in 1:length(list1)) {
@@ -54,12 +92,32 @@ list_times_list <- function(list1, list2) {
   out
 }
 
+#' Replicate a matrix
+#'
+#' This function replicates a matrix vertically and horizontally.
+#'
+#' @param mat Input matrix
+#' @param v Number of vertical replications
+#' @param h Number of horizontal replications
+#'
+#' @return A replicated matrix
+#'
 repmat <- function(mat, v = 1, h = 1) {
   kronecker(matrix(1, h, v), mat)
 }
 
 # Matrix utils
 # Found in https://stackoverflow.com/questions/24299171/function-to-split-a-matrix-into-sub-matrices-in-r
+#' Split a matrix into sub-matrices
+#'
+#' This function splits a matrix into sub-matrices of specified dimensions.
+#'
+#' @param M Input matrix
+#' @param r Number of rows in each sub-matrix
+#' @param c Number of columns in each sub-matrix
+#'
+#' @return An array of sub-matrices
+#'
 mat_split <- function(M, r, c) {
   nr <- ceiling(nrow(M) / r)
   nc <- ceiling(ncol(M) / c)
@@ -74,12 +132,28 @@ mat_split <- function(M, r, c) {
   return(mats)
 }
 
+#' Cumulative sum of a list of matrices
+#'
+#' This function calculates the cumulative sum of a list of matrices.
+#'
+#' @param list_of_mats A list of matrices
+#'
+#' @return A list of cumulative sums of matrices
+#'
 mat_cumsum <- function(list_of_mats) {
   lapply(as.list(1:length(list_of_mats)), function(i) {
     Reduce("+", list_of_mats[1:i])
   })
 }
 
+#' Extract diagonal elements from a list of lists
+#'
+#' This function extracts the diagonal elements from a list of lists.
+#'
+#' @param list_of_lists A list of lists
+#'
+#' @return A list containing the diagonal elements
+#'
 get_diag <- function(list_of_lists) {
   out_list <- list()
   for (i in 1:length(list_of_lists[[1]])) {
@@ -88,10 +162,27 @@ get_diag <- function(list_of_lists) {
   return(out_list)
 }
 
+#' Convert a matrix to a list of vectors
+#'
+#' This function converts a matrix to a list of column vectors.
+#'
+#' @param X Input matrix
+#'
+#' @return A list of column vectors
+#'
 matrix_to_lov <- function(X) {
   lapply(seq_len(ncol(X)), function(i) X[,i])
 }
 
+#' Bind outputs from a list of lists
+#'
+#' This function binds outputs of a specific type from a list of lists.
+#'
+#' @param list_of_lists A list of lists containing outputs
+#' @param type The type of output to extract and bind
+#'
+#' @return A combined matrix of outputs
+#'
 bind_output <- function(list_of_lists, type) {
   do.call("cbind", lapply(list_of_lists, function(x) do.call("c", x[[type]])))
 }
@@ -111,11 +202,14 @@ bind_output <- function(list_of_lists, type) {
   return(internals)
 }
 
-#' Title
+#' Bind a list of lists into a single matrix
 #'
-#' @param list_of_lists
+#' This function binds a list of lists into a single matrix by row-binding
+#' the column-bound elements of each inner list.
 #'
-#' @return
+#' @param list_of_lists A list of lists to be bound
+#'
+#' @return A combined matrix
 #' @export
 #'
 #' @examples

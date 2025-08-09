@@ -125,10 +125,37 @@
 # }
 
 
+#' Row-wise multiplication and sum for numerical stability
+#'
+#' This function performs a numerically stable row-wise multiplication and sum operation
+#' for log-space calculations.
+#'
+#' @param exp_log_a_max Exponentiated maximum log values
+#' @param exp_log_a_diff Exponentiated differences from maximum log values
+#' @param b Matrix to multiply with
+#'
+#' @return Result of row-wise multiplication and sum
+#'
 rs_AB <- function(exp_log_a_max, exp_log_a_diff, b) {
   exp_log_a_max*(Rfast::rowsums(exp_log_a_diff*b))
 }
 
+#' Calculate log-likelihood derivatives for density stacking
+#'
+#' This function calculates the log-likelihood and its derivatives for density stacking models.
+#' It computes the gradient and Hessian matrix needed for model fitting.
+#'
+#' @param list_of_beta List of beta parameters
+#' @param list_of_X List of design matrices
+#' @param theta Theta parameters
+#' @param weight Weight function
+#' @param log_dens Matrix of log densities
+#' @param exp_log_dens_maxs Maximum exponentiated log densities
+#' @param exp_log_dens_diff Exponentiated differences from maximum log densities
+#' @param deriv Integer indicating derivative order (0=value, 1=gradient, 2=Hessian)
+#'
+#' @return List containing log-likelihood (l), gradient (lb), and Hessian (lbb)
+#'
 get_ll_dens_derivs <- function(list_of_beta,
                                list_of_X,
                                theta,
@@ -238,6 +265,18 @@ get_ll_dens_derivs <- function(list_of_beta,
 }
 
 
+#' Create a density stacking family for mgcv
+#'
+#' This function creates an mgcv family object for density stacking models.
+#' It allows stacking multiple density estimates using flexible weight functions.
+#'
+#' @param logP Matrix of log densities from different models
+#' @param weight Weight function to combine densities
+#' @param RidgePen Ridge penalty parameter for regularization
+#'
+#' @return An mgcv family object for density stacking
+#' @export
+#'
 DensStack <- function(logP, weight, RidgePen = 1e-5) {
   ### mgcv family for nested stacking
   ### inner_funcs is list of lists of inner weight functions

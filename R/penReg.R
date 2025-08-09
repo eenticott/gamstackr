@@ -1,15 +1,17 @@
+##' Internal penalized regression function
 #'
-#' Internal function for penalized regression
-#' 
-#' @description This is an internal function, which need to be exported for reasons having to 
-#'              do with R environments. Please do not use it.
-#' @param x design matrix
-#' @param e matrix square root of penalty
-#' @param y response vector
-#' @name penReg
-#' @rdname penReg
-#' @export penReg
-penReg <- function(x,e,y) {
+#' Computes coefficients for penalized regression of y on matrix x, with penalty matrix e.
+#' This function is internal and exported only for technical reasons; users should not call it directly.
+#'
+#' @param x Numeric matrix. Design matrix.
+#' @param e Numeric matrix. Square root of penalty matrix.
+#' @param y Numeric vector. Response variable.
+#'
+#' @return Numeric vector of penalized regression coefficients.
+##' @importFrom mgcv Rrank
+#' @keywords internal
+#' @export
+penReg <- function(x, e, y) {
   ## Taken from Simon N. Wood (in mgcv it is "pen.reg")
   ## get coefficients of penalized regression of y on matrix x
   ## where e is a square root penalty. Idea is to use e mainly for 
@@ -20,19 +22,19 @@ penReg <- function(x,e,y) {
   }
   ## need to adjust degree of penalization, so best to QR
   ## the x matrix up front...
-  qrx <- qr(x,LAPACK=TRUE)
+  qrx <- qr(x, LAPACK = TRUE)
   R <- qr.R(qrx)
   r <- ncol(R)
-  rr <- Rrank(R) ## rank of R/X
-  R[,qrx$pivot] <- R ## unpivot
-  Qy <- qr.qty(qrx,y)[1:ncol(R)]  
+  rr <- mgcv::Rrank(R) ## rank of R/X
+  R[, qrx$pivot] <- R ## unpivot
+  Qy <- qr.qty(qrx, y)[seq_len(ncol(R))]
   ## now we want estimates with penalty weight low enough 
   ## EDF is k * rr where k is somewhere in e.g. (.7,.9)
   k <- .01 * norm(R)/norm(e)
   qrr <- qr(rbind(R,e*k));
   edf <- sum(qr.Q(qrr)[1:r,]^2) 
   re <- min(sum(colSums(abs(e))!=0),nrow(e)) ## NEW
-  re <- re - (Rrank(qr.R(qrr)) - rr) ## Matteo: subtract from rank(e) the number of directions 
+  re <- re - (mgcv::Rrank(qr.R(qrr)) - rr) ## Matteo: subtract from rank(e) the number of directions 
   ##         in e that are in null_space(X)
   while (edf > rr-.1*re) { ## increase penalization ## NEW
     k <- k*10

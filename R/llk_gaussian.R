@@ -1,10 +1,21 @@
+##' Gaussian log-likelihood and derivatives
+#'
+#' Computes the log-likelihood and its derivatives for a Gaussian model parameterized by mean and precision.
+#'
+#' @param y Numeric vector. Observed values.
+#' @param param Matrix or list. Parameters: first column/element is mean, second is precision (1/sigma).
+#' @param deriv Integer. Order of derivative to compute (0 = value, 1 = gradient, 2 = Hessian, etc.).
+#' @param ... Additional arguments (ignored).
+#'
+#' @return List of derivatives: d0 (log-likelihood), d1 (gradient), d2 (Hessian), etc.
+#' @export
 llk_gaussian <- function(y, param, deriv = 0, ...) {
   # derivatives are sigma2 not tau
   if (is.list(param) ) param <- do.call("cbind", param)
   if (is.vector(param)) param <- matrix(param, nrow = 1)
   if (ncol(param) != 2) stop("Wrong number of parameters provided")
 
-  p <- ncol( param )
+  # p <- ncol( param )
   mu <- param[ , 1, drop = TRUE]
   tau <- param[ , 2, drop = TRUE] # 1 / sigma
   tau2 <- tau^2                   # 1 / sigma^2
@@ -58,13 +69,24 @@ llk_gaussian <- function(y, param, deriv = 0, ...) {
 }
 
 
+##' Gaussian log-likelihood and derivatives (alternate)
+#'
+#' Computes the log-likelihood and its derivatives for a Gaussian model (alternate version).
+#'
+#' @param y Numeric vector or matrix. Observed values.
+#' @param param Matrix or list. Parameters: first column/element is mean, second is precision (1/sigma).
+#' @param deriv Integer. Order of derivative to compute (0 = value, 1 = gradient, 2 = Hessian, etc.).
+#' @param ... Additional arguments (ignored).
+#'
+#' @return List of derivatives: d0 (log-likelihood), d1 (gradient), d2 (Hessian), etc.
+#' @export
 llk_gaussian2 <- function(y, param, deriv = 0, ...) {
   # derivatives are sigma2 not tau
   if (is.list(param) ) param <- do.call("cbind", param)
   if (is.vector(param)) param <- matrix(param, nrow = 1)
   if (ncol(param) != 2) stop("Wrong number of parameters provided")
 
-  p <- ncol( param )
+  # p <- ncol( param )
   mu <- param[ , 1, drop = TRUE]
   tau <- param[ , 2, drop = TRUE] # 1 / sigma
   tau2 <- tau^2                   # 1 / sigma^2

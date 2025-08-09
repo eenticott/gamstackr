@@ -68,6 +68,16 @@
 # numDeriv::grad(test_f, c(2,-2))
 # numDeriv::hessian(test_f, c(2,-2))
 
+##' Squared loss function
+#'
+#' Computes squared loss and its derivatives for regression tasks.
+#'
+#' @param y Numeric vector. True values.
+#' @param yhat Numeric vector. Predicted values.
+#' @param deriv Integer. Order of derivative to compute (0 = value, 1 = gradient, 2 = Hessian).
+#'
+#' @return List with elements: loss (numeric vector), l1 (first derivative), l2 (second derivative), C (function for normalization constant and its derivatives).
+#' @export
 square_loss <- function(y, yhat, deriv = 0) {
   # Calculate loss
   loss <- (y-yhat)^2
@@ -98,6 +108,14 @@ square_loss <- function(y, yhat, deriv = 0) {
   return(list(loss=loss, l1 = l1, l2 = l2, C = C))
 }
 # Taken from qgam package, comp stable for log(1+exp(x))
+##' Numerically stable log(1 + exp(x))
+#'
+#' Computes log(1 + exp(x)) in a numerically stable way, adapted from the qgam package.
+#'
+#' @param x Numeric vector.
+#'
+#' @return Numeric vector of log(1 + exp(x)).
+#' @keywords internal
 log1px <- function (x)
 {
   indx <- .bincode(x, c(-Inf, -37, 18, 33.3, Inf), right = TRUE,
@@ -118,6 +136,14 @@ log1px <- function (x)
 }
 
 
+##' Pinball loss function generator
+#'
+#' Returns a function that computes the pinball (quantile) loss and its derivatives for a given quantile tau.
+#'
+#' @param tau Numeric. Quantile level (between 0 and 1).
+#'
+#' @return Function(y, yhat, deriv = 0) that computes pinball loss and derivatives.
+#' @export
 pinball_loss <- function(tau) {
   assign(".sigma", NULL, env=environment())
   function(y, yhat, deriv = 0) {

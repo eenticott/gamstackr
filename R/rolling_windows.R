@@ -1,19 +1,25 @@
-# TODO: Allow fixed proportional window
-# TODO: Don't require all args (have control = named list?)
+## TODO: Allow fixed proportional window
+## TODO: Don't require all args (have control = named list?)
 
 #' Create train/test rolling windows for model evaluation
 #'
-#' @param df dataframe of data you want to evaluate
-#' @param initial_size Int, How large the starting window is.
-#' @param window_size Int, Width of sliding window.
-#' @param horizon_size Int,  Number of values to be forecast ahead.
-#' @param step_size Int, Number of rows added in each iteration.
-#' @param type str, "expanding" or "sliding"
+#' Generates rolling or expanding windows for time series or cross-validation.
 #'
-#' @return df with added attributes for training and testing indexes
+#' @param df Data frame of data to evaluate.
+#' @param initial_size Integer. Size of the initial training window.
+#' @param window_size Integer. Width of the sliding window (ignored for expanding windows).
+#' @param horizon_size Integer. Number of values to forecast ahead (test window size).
+#' @param step_size Integer. Number of rows added in each iteration (default: horizon_size).
+#' @param type Character. Either "expanding" or "sliding".
+#'
+#' @return Data frame with added attributes: 'training_windows' and 'testing_windows', each a list of row indices.
 #' @export
 #'
 #' @examples
+#' df <- data.frame(x = 1:100)
+#' win <- create_windows(df, initial_size = 50, window_size = 20, horizon_size = 10)
+#' attr(win, "training_windows")
+#' attr(win, "testing_windows")
 create_windows <- function(df, initial_size, window_size, horizon_size, step_size = NULL, type = "expanding") {
   # Input checks
   if (typeof(type) != "character") {stop("type must be a string, expanding or sliding allowed.")}
@@ -68,21 +74,26 @@ create_windows <- function(df, initial_size, window_size, horizon_size, step_siz
   return(structure(df, "training_windows" = training_idx, "testing_windows" = testing_idx))
 }
 
-#' Plot windows for easy visualisation.
+##' Plot windows for easy visualisation.
 #'
-#' @param windowed_dat Output of create_windows.
+#' Visualizes the training and testing windows produced by `create_windows`.
 #'
-#' @return Displays plot showing windowed data
+#' @param windowed_dat Output of `create_windows`.
+#'
+#' @return Invisibly returns NULL. Displays a plot showing windowed data.
 #' @export
 #'
 #' @examples
+#' df <- data.frame(x = 1:100)
+#' win <- create_windows(df, initial_size = 50, window_size = 20, horizon_size = 10)
+#' plot_windows(win)
 plot_windows <- function(windowed_dat) {
   train_idxs <- attr(windowed_dat, "training_windows")
   test_idxs <- attr(windowed_dat, "testing_windows")
 
   plot(1, type="n", xlab="Index", ylab="Iteration", xlim=c(1, nrow(windowed_dat)), ylim=c(1, length(train_idxs)))
 
-  for (i in 1:length(train_idxs)) {
+  for (i in seq_along(train_idxs)) {
     lines(x = train_idxs[[i]], y = rep(i, length(train_idxs[[i]])), col = "blue", lwd = 2)
     lines(x = test_idxs[[i]], y = rep(i, length(test_idxs[[i]])), col = "orange", lwd = 2)
   }
@@ -90,17 +101,22 @@ plot_windows <- function(windowed_dat) {
   legend("bottomright", legend = c("Train", "Test"), col = c("blue", "orange"), lty = c(1,1))
 }
 
-#' Create a windower for use in stacking/experts.
-#' @param initial_size Int, How large the starting window is.
-#' @param horizon_size Int,  Number of values to be forecast ahead.
-#' @param window_size Int, Width of sliding window.
-#' @param step_size Int, Number of rows added in each iteration.
-#' @param type str, "expanding" or "sliding"
+##' Create a windower for use in stacking/experts.
 #'
-#' @return Windower object.
+#' Returns a function that applies `create_windows` with preset parameters.
+#'
+#' @param initial_size Integer. Size of the initial training window.
+#' @param horizon_size Integer. Number of values to forecast ahead (test window size).
+#' @param window_size Integer. Width of the sliding window (optional).
+#' @param step_size Integer. Number of rows added in each iteration (optional).
+#' @param type Character. Either "expanding" or "sliding".
+#'
+#' @return A function that takes a data frame and returns windowed data with attributes.
 #' @export
 #'
 #' @examples
+#' windower <- create_windower(50, 10, 20)
+#' win <- windower(data.frame(x = 1:100))
 create_windower <- function(initial_size, horizon_size, window_size = NULL, step_size = NULL, type = "expanding") {
   windower <- function(df) {
     create_windows(df, initial_size, window_size, horizon_size, step_size, type)
@@ -108,14 +124,28 @@ create_windower <- function(initial_size, horizon_size, window_size = NULL, step
   return(windower)
 }
 
+
+#' Split a data frame by a factor column
+#'
+#' Splits a data frame into a list of data frames, one for each unique value of a specified factor column.
+#'
+#' @param df Data frame to split.
+#' @param fact_split Character or integer. Name or index of the column to split by.
+#'
+#' @return List of data frames, one per unique value in the specified column.
+#' @export
+#'
+#' @examples
+#' df <- data.frame(a = rep(1:2, each = 3), b = 1:6)
+#' split_by(df, "a")
 split_by <- function(df, fact_split) {
-   N <- length(unique(df[,fact_split]))
-   out_df <- list()
-   i <- 1
-   for (fs in unique(df[,fact_split])) {
-     out_df[[i]] <- df[df[,fact_split] == fs]
-   }
-   return(out_df)
+  out_df <- list()
+  i <- 1
+  for (fs in unique(df[, fact_split])) {
+    out_df[[i]] <- df[df[, fact_split] == fs, ]
+    i <- i + 1
+  }
+  return(out_df)
 }
 
 

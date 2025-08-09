@@ -11,11 +11,14 @@
 # Functions that can be used for internal model weights and derivatives
 rowsums <- Cpp_rowSums
 
-#' Matrix of max(i,j) where i,j are matrix coords
+##' Matrix of max(i, j) indices
 #'
-#' @param n Integer: Size of n x n matrix
+#' Returns an n x n matrix where each entry is max(i, j), used in ordinal penalty calculations.
 #'
-#' @return Matrix of size n x n
+#' @param n Integer. Size of the matrix (n x n).
+#'
+#' @return Numeric matrix of size n x n.
+#' @export
 max_index_mat <- function(n) { # used in ordinal penalty
   out = matrix(1:n, ncol = n, nrow = n, byrow = T)
   out[lower.tri(out)] <- t(out)[lower.tri(out)]

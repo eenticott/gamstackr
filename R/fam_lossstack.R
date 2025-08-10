@@ -57,7 +57,7 @@ get_loss_derivs <- function(list_of_beta, list_of_X, theta, logv, loss, weight, 
     lv <- v*sum(-loss_eval$loss - C_eval$Cv/C_eval$C)
     grad <- c(unlist(leta), unlist(ltheta), lv)
     if (deriv >= 2) {
-      lbetabeta <- list()
+      lbetabeta <- NULL
       if (neta > 0) {
         for (i in 1:neta) {
           lbetabeta[[i]] <- list()
@@ -70,7 +70,7 @@ get_loss_derivs <- function(list_of_beta, list_of_X, theta, logv, loss, weight, 
         lbetabeta <- do.call("rbind", lbetabeta)
       }
 
-      lbetatheta <- list()
+      lbetatheta <- NULL
       if (neta > 0 & ntheta > 0) {
         for (i in 1:neta) {
           lbetatheta[[i]] <- list()
@@ -84,7 +84,7 @@ get_loss_derivs <- function(list_of_beta, list_of_X, theta, logv, loss, weight, 
       }
 
 
-      lbetav <- list()
+      lbetav <- NULL
       if (neta > 0) {
         for (i in 1:neta) {
           lbetav[[i]] <- Rfast::colsums(-loss_eval$l1*Rfast::rowsums(W$f_eta_eval[[i]] * preds)*list_of_X[[i]])
@@ -92,7 +92,7 @@ get_loss_derivs <- function(list_of_beta, list_of_X, theta, logv, loss, weight, 
         lbetav <- do.call("c", lbetav)
       }
 
-      lthetatheta <- list()
+      lthetatheta <- NULL
       if (ntheta > 0) {
         for (i in 1:ntheta) {
           lthetatheta[[i]] <- list()
@@ -105,7 +105,7 @@ get_loss_derivs <- function(list_of_beta, list_of_X, theta, logv, loss, weight, 
         lthetatheta <- do.call("rbind", lthetatheta)
       }
 
-      lthetav <- list()
+      lthetav <- NULL
       if (ntheta > 0) {
         for (i in 1:ntheta) {
           lthetav[[i]] <- -sum(loss_eval$l1*Rfast::rowsums(W$f_theta_eval[[i]] * preds))
@@ -119,9 +119,29 @@ get_loss_derivs <- function(list_of_beta, list_of_X, theta, logv, loss, weight, 
         if (is.null(x)) return(NULL)
         return(t(x))
       }
-      hess <- rbind(cbind(lbetabeta, lbetatheta, v*lbetav),
-                    cbind(my_t(lbetatheta), lthetatheta, v*lthetav),
-                    cbind(v*my_t(lbetav), my_t(v*lthetav), lvv*v^2 + lv))
+      # Assemble Hessian block-wise depending on availability of beta/theta
+      have_beta <- !is.null(lbetabeta) || !is.null(lbetav) || !is.null(lbetatheta)
+      have_theta <- !is.null(lthetatheta) || !is.null(lthetav) || !is.null(lbetatheta)
+
+      if (have_beta && have_theta) {
+        hess <- rbind(
+          cbind(lbetabeta,           lbetatheta,        v * lbetav),
+          cbind(my_t(lbetatheta),    lthetatheta,       v * lthetav),
+          cbind(v * my_t(lbetav),    my_t(v * lthetav), lvv * v^2 + lv)
+        )
+      } else if (have_beta && !have_theta) {
+        hess <- rbind(
+          cbind(lbetabeta,        v * lbetav),
+          cbind(v * my_t(lbetav), lvv * v^2 + lv)
+        )
+      } else if (!have_beta && have_theta) {
+        hess <- rbind(
+          cbind(lthetatheta,       v * lthetav),
+          cbind(my_t(v * lthetav), lvv * v^2 + lv)
+        )
+      } else {
+        hess <- matrix(lvv * v^2 + lv, nrow = 1, ncol = 1)
+      }
     }
   }
   return(list(l = ll, lb = grad, lbb = hess))
@@ -204,12 +224,15 @@ LossStack <- function(preds, loss, weights, RidgePen = 1e-5) {
     ntheta <- attr(G$family$weights, "ntheta")
     nv <- 1
     atr <- attributes(G$X)
-    G$X <- cbind(G$X,matrix(0,nrow(G$X),ntheta+nv)) ## add dummy columns to G$X
+    G$X <- cbind(G$X, matrix(0, nrow(G$X), ntheta + nv)) ## add dummy columns to G$X
 
-    attr(G$X, "lpi") <- atr$lpi
+    # Ensure lpi is present: default to a single block covering beta columns
+    lpi0 <- atr$lpi
+    if (is.null(lpi0)) lpi0 <- list(seq_len(nbeta))
+    attr(G$X, "lpi") <- lpi0
     attr(G$X, "dim") <- c(nrow(G$X), ncol(G$X))
 
-    putlpi(atr$lpi)
+    putlpi(lpi0)
     if (!is.null(G$Sl))
       attr(G$Sl, "E") <- cbind(attr(G$Sl, "E"),
                                matrix(0, nbeta, ntheta+nv))
@@ -310,7 +333,12 @@ LossStack <- function(preds, loss, weights, RidgePen = 1e-5) {
     }
     orig_lpi <- family$getlpi()
     given_lpi <- attr(x,"lpi")
-    lpi <- given_lpi
+    # Fallback to original lpi if current design matrix lacks lpi attribute
+    lpi <- if (is.null(given_lpi)) orig_lpi else given_lpi
+    # Guard against any zero/invalid indices (mgcv sometimes carries placeholders)
+    if (!is.null(lpi)) lpi <- lapply(lpi, function(ix) ix[ix > 0])
+    # Final fallback: single block over all beta columns
+    if (is.null(lpi) || length(lpi) == 0) lpi <- list(seq_len(ncol(x)))
     if (!is.null(attr(x, "drop"))) {
       drop_idx <- attr(x, "drop")
       orig_nx <-  Reduce("+",lapply(orig_lpi, function(lpi_ii) length(lpi_ii)))
@@ -328,7 +356,7 @@ LossStack <- function(preds, loss, weights, RidgePen = 1e-5) {
     list_of_beta <- list()
     list_of_X <- list()
 
-    for (i in 1:length(lpi)) {
+    for (i in seq_along(lpi)) {
       list_of_beta[[i]] <- coef[lpi[[i]]]
       list_of_X[[i]] <- x[,lpi[[i]], drop=FALSE]
     }

@@ -2,22 +2,55 @@
 % Please edit documentation in R/experts.R
 \name{create_expert}
 \alias{create_expert}
-\title{Create an expert that can be fitted, retrieve predictions and simulate from fitted distribution.}
+\title{Create an expert wrapper for model fitting, prediction, simulation and density evaluation}
 \usage{
 create_expert(fit_func, pred_func = NULL, sim_func = NULL, dens_func = NULL)
 }
 \arguments{
-\item{fit_func}{A function that returned a fitted model given a dataframe.}
+\item{fit_func}{function(data) -> model. Function that fits a model given a
+data frame and returns the fitted model object.}
 
-\item{pred_func}{A function that returns predictions given fitted model and data.}
+\item{pred_func}{optional function(model, newdata) -> numeric. Function that
+returns predictions given a fitted model and new data. If \code{NULL},
+\code{stats::predict(model, newdata, type = "response")} is used.}
 
-\item{sim_func}{A function that simulated from the estimated density given model and data.}
+\item{sim_func}{optional function(model, newdata) -> numeric. Function that
+simulates responses from the fitted model for given new data. Required if
+you plan to call \verb{$simulate} on the returned expert.}
 
-\item{dens_func}{A function returns density under fitted model at given data points.}
+\item{dens_func}{optional function(model, newdata) -> numeric. Function that
+returns (log-)densities under the fitted model at each row of \code{newdata}.
+Required for density stacking (\code{type = "dens"}). Should typically return
+log-densities for numerical stability.}
 }
 \value{
-An expert object that can be used within evaluate_expert and evaluate_stack.
+An object of class \code{"expert"} (a list) with the following elements/methods:
+\describe{
+\item{$fit}{function(expert, data) -> expert. Fits the model and stores it in \verb{$fitted_model}.}
+\item{$predict}{function(expert, newdata) -> numeric. Returns predictions via \code{pred_func} or \code{predict()}.}
+\item{$simulate}{function(expert, newdata) -> numeric. Uses \code{sim_func}; errors if not provided.}
+\item{$density}{function(expert, newdata) -> numeric. Uses \code{dens_func}; required for density stacking.}
+\item{$fitted_model}{The last fitted model (populated after \verb{$fit}).}
+}
 }
 \description{
-Create an expert that can be fitted, retrieve predictions and simulate from fitted distribution.
+Wraps user-supplied functions into an \code{expert} object with methods to fit a
+model, obtain predictions, simulate responses, and evaluate predictive densities.
+}
+\examples{
+\dontrun{
+# Simple linear-model expert
+fit_func <- function(data) lm(y ~ x, data = data)
+dens_func <- function(mod, newdata) {
+  mu <- predict(mod, newdata)
+  sig2 <- as.numeric(crossprod(mod$residuals) / mod$df.residual)
+  stats::dnorm(newdata$y, mu, sqrt(sig2), log = TRUE)
+}
+ex <- create_expert(fit_func = fit_func, dens_func = dens_func)
+ex <- ex$fit(ex, data.frame(y = rnorm(10), x = rnorm(10)))
+preds <- ex$predict(ex, data.frame(x = rnorm(5)))
+}
+}
+\seealso{
+\code{\link[=evaluate_expert]{evaluate_expert()}}, \code{\link[=create_stacker]{create_stacker()}}, \code{\link[=evaluate_stack]{evaluate_stack()}}.
 }

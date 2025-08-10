@@ -2,22 +2,44 @@
 % Please edit documentation in R/experts.R
 \name{evaluate_expert}
 \alias{evaluate_expert}
-\title{Evaluate an expert object over a sliding or expanding window.}
+\title{Evaluate an expert (or list of experts) across rolling/expanding windows}
 \usage{
 evaluate_expert(expert, windower, data, type = "predict")
 }
 \arguments{
-\item{expert}{An expert object created by \code{create_expert}.}
+\item{expert}{An \code{expert} created by \code{\link[=create_expert]{create_expert()}}, or a list of such
+experts.}
 
-\item{windower}{A window object created by \code{create_windower}.}
+\item{windower}{A windowing function created by \code{\link[=create_windower]{create_windower()}}.}
 
-\item{data}{A dataframe containing response and features.}
+\item{data}{A data frame containing response and features used for windowing
+and evaluation.}
 
-\item{type}{List the options you want outputted from "predict", "density" and "model".}
+\item{type}{Character vector of outputs to return. Any of
+\code{c("predict", "density", "model")}.}
 }
 \value{
-A list containing the outputs determined by type.
+If \code{expert} is a single expert, a named list with elements:
+\describe{
+\item{preds}{List of numeric vectors, one per test window (present if requested).}
+\item{dens}{List of numeric vectors, one per test window (present if requested).}
+\item{model}{The final fitted model object (present if requested).}
+}
+If \code{expert} is a list of experts, returns a list whose elements are the above
+structure for each expert.
 }
 \description{
-Evaluate an expert object over a sliding or expanding window.
+Applies an \code{expert} across the windows produced by a \code{windower} (created by
+\code{\link[=create_windower]{create_windower()}}). When \code{expert} is a single \code{expert}, returns lists of
+per-window outputs. When \code{expert} is a list of experts, evaluates each and
+returns a list of outputs (one per expert).
+}
+\examples{
+\dontrun{
+windower <- create_windower(initial_size = 100, horizon_size = 20, step_size = 20)
+out <- evaluate_expert(expert, windower, df, type = c("predict", "density"))
+}
+}
+\seealso{
+\code{\link[=create_expert]{create_expert()}}, \code{\link[=create_windower]{create_windower()}}, \code{\link[=evaluate_stack]{evaluate_stack()}}.
 }

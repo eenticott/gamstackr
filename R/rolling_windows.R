@@ -108,6 +108,15 @@ create_windower <- function(initial_size, horizon_size, window_size = NULL, step
   return(windower)
 }
 
+#' Split a dataframe by a factor variable
+#'
+#' This function splits a dataframe into multiple dataframes based on unique values of a factor variable.
+#'
+#' @param df Dataframe to split
+#' @param fact_split Column name of the factor variable to split by
+#'
+#' @return A list of dataframes, one for each unique value of the factor variable
+#'
 split_by <- function(df, fact_split) {
    N <- length(unique(df[,fact_split]))
    out_df <- list()

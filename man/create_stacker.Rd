@@ -2,22 +2,48 @@
 % Please edit documentation in R/experts.R
 \name{create_stacker}
 \alias{create_stacker}
-\title{Create a stacking object from experts and inner functions.}
+\title{Create a stacker object}
 \usage{
-create_stacker(experts, weight_func, type, loss = NULL)
+create_stacker(experts, weight_func, type = c("dens", "loss"), loss = NULL)
 }
 \arguments{
-\item{experts}{List of expert objects created by \code{create_expert}.}
+\item{experts}{List of experts created by \code{\link[=create_expert]{create_expert()}}. Length K equals
+the number of experts to be stacked.}
 
-\item{weight_func}{Function that determines expert weights.}
+\item{weight_func}{Inner weight function (e.g. \code{\link[=ordinal]{ordinal()}}, \code{\link[=multinomial]{multinomial()}},
+\code{\link[=MVN_weights]{MVN_weights()}}) defining K expert weights; must satisfy
+\code{attr(weight_func, "num_weights") == length(experts)}.}
 
-\item{type}{"dens" or "loss" - Whether densities or predictions are being stacked.}
+\item{type}{Either \code{"dens"} (stack predictive densities) or \code{"loss"} (stack
+point predictions under a loss).}
 
-\item{loss}{Loss function you want to optimise with stacking. Only needed if type = "loss".}
+\item{loss}{Loss function used when \code{type = "loss"} (e.g. \code{\link[=square_loss]{square_loss()}},
+\code{\link[=pinball_loss]{pinball_loss()}}). Ignored when \code{type = "dens"}.}
 }
 \value{
-Stacking object that can take data and return predicted weights for experts.
+A list with class-less methods/fields:
+\describe{
+\item{$experts}{The provided list of experts.}
+\item{$weight_func}{The inner weight function.}
+\item{$fit_experts}{function(stacker, train) -> stacker. Fits all experts to \code{train}.}
+\item{$fit_stack}{function(stacker, formula, stack, preds = NULL, RidgePen = 1e-5) -> stacker. Fits stacking model with \code{\link[mgcv:gam]{mgcv::gam()}}.}
+\item{$predict}{function(stacker, newdata, output = c("weights","preds")) -> matrix or numeric. Predicts weights (default) or stacked predictions.}
+\item{$fitted_stack}{The fitted \link[mgcv:gam]{mgcv::gam} stacking model (after \verb{$fit_stack}).}
+\item{$sp,$scale}{Smoothing/scale parameters stored between fits.}
+}
 }
 \description{
-Create a stacking object from experts and inner functions.
+Constructs a stacker encapsulating expert models, a weight-generating
+function, and the stacking type (density or loss). The returned object
+provides methods to fit experts, fit the stacking model, and predict weights
+(or stacked predictions) on new data.
+}
+\examples{
+\dontrun{
+stk <- create_stacker(list(ex1, ex2), weight_func = multinomial(2), type = "loss", loss = square_loss)
+}
+}
+\seealso{
+\code{\link[=evaluate_stack]{evaluate_stack()}}, \code{\link[=evaluate_expert]{evaluate_expert()}}, \code{\link[=create_windower]{create_windower()}},
+\code{\link[=DensStack]{DensStack()}}, \code{\link[=LossStack]{LossStack()}}.
 }

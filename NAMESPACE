@@ -1,22 +1,11 @@
 useDynLib(gamstackr, .registration=TRUE)
 importFrom(Rcpp, evalCpp)
-exportPattern("^[[:alpha:]]+")
+importFrom(stats, predict, dnorm)
+importFrom(utils, setTxtProgressBar, txtProgressBar)
+importFrom(mgcv, gam)
 
-importFrom("graphics", "legend", "lines")
-importFrom("stats", "predict")
-importFrom("stats", "dnorm")
-importFrom("utils", "setTxtProgressBar", "txtProgressBar")
-export(.internals)
-export(MVN_weights)
-export(NestedStack)
-export(create_expert)
-export(create_stacker)
-export(create_windower)
-export(create_windows)
-export(evaluate_all)
-export(evaluate_expert)
-export(evaluate_stack)
-export(id)
-export(ordinal)
-export(penReg)
-export(plot_windows)
+export(create_expert, evaluate_expert, create_windower, create_windows,
+       create_stacker, evaluate_stack,
+       ordinal, multinomial, nested, MVN_weights,
+       DensStack, LossStack,
+       bind_output, bind_list, plot_windows)

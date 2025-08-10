@@ -1,302 +1,285 @@
-We will demonstrate how to use the `gamstackr` package through a short
-example applied to day-ahead electricity spot price forecasting. We look
-at hourly data from 2018 - 2022. Price data can be found at
-`https://www.entsoe.eu/`, exogenous data was provided by EDF, some of
-which is available at part of the eco2mix data set found here:
-`https://odre.opendatasoft.com/explore/dataset/eco2mix-regional-tr`/.
+# gamstackr
 
-![](man/figures/README/unnamed-chunk-1-1.png)
+<!-- badges: start -->
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![R-CMD-check](https://github.com/eenticott/gamstackr/workflows/R-CMD-check/badge.svg)](https://github.com/eenticott/gamstackr/actions)
+<!-- badges: end -->
 
-## *gamstackr* workflow
+**gamstackr** is an R package for probabilistic density stacking and expert combination in time series forecasting. It provides a flexible framework for combining multiple forecasting models (experts) through sophisticated weighting schemes, particularly useful for electricity price forecasting and other time series applications.
 
-The basic workflow for fitting models includes four key steps:
+## Key Features
 
-1.  **Define experts**
+- **Flexible Expert Definition**: Create custom forecasting experts with any underlying model
+- **Multiple Stacking Methods**: Support for ordinal, multivariate normal, and identity weight functions
+- **Time Series Windows**: Built-in tools for sliding and expanding window analysis
+- **Density Combination**: Combine probabilistic forecasts rather than just point forecasts
+- **GAM Integration**: Seamless integration with Generalized Additive Models via mgcv
+- **Performance Optimized**: C++ backend via Rcpp for computational efficiency
 
-2.  **Fit experts**
+## Installation
 
-3.  **Fit the stack**
+You can install the development version of gamstackr from [GitHub](https://github.com/eenticott/gamstackr) with:
 
-4.  **Forecast expert densities and weights for desired period**
+```r
+# install.packages("devtools")
+devtools::install_github("eenticott/gamstackr")
+```
 
-We will go through each of these steps in more detail later.
+## Core Workflow
 
-## Time series workflow
+The **gamstackr** workflow consists of four main steps:
 
-Often when dealing with time series data you will want to perform these
-steps iteratively.
+1.  **Define experts** - Create forecasting models with custom fitting and density functions
+2.  **Create windows** - Set up time series analysis windows (sliding or expanding)
+3.  **Evaluate experts** - Fit experts across windows and generate predictions/densities
+4.  **Stack results** - Combine expert forecasts using sophisticated weighting schemes
 
-The time series workflow would be
+## Quick Start
 
-1.  **Define experts**
+Here's a simple example demonstrating the core workflow:
 
-2.  **Define windows**
+```r
+library(gamstackr)
 
-3.  *For each window*:
+# 1. Define experts with custom fitting and density functions
+fit_func <- function(data) {
+  mgcv::gam(SpotPrice ~ s(LagMatrix, by = LoadMatrix) + Nuclear_availability, 
+            data = data)
+}
 
-    1.  **Fit experts**
-    2.  **Fit stack**
-    3.  **Forecast expert densities and weights on chosen horizon**
+dens_func <- function(fitted_model, data) {
+  mu <- predict(fitted_model, data)
+  sd <- sqrt(fitted_model$sig2)
+  dnorm(data[,"SpotPrice"], mu, sd, log = TRUE)
+}
 
-There are tools included in `gamstackr` for handling windows and
-automatically fitting/predicting across a given window.
+expert1 <- create_expert(fit_func, dens_func = dens_func)
 
-# Window tools
+# 2. Create windowing strategy
+windower <- create_windower(
+  horizon_size = 7, 
+  window_size = 12*7, 
+  step_size = 7, 
+  type = "sliding"
+)
 
-There are two main types of window that we consider, *sliding window*
-and *expanding window*. You first need to create your window function
-with given parameters, and then you can call this on any data frame that
-you wish to split into windows.
+# 3. Evaluate experts across windows
+expert_results <- evaluate_expert(expert1, windower, your_data, 
+                                  type = c("predict", "density"))
 
-    slide_window <- create_windower(12*7, horizon_size = 7, window_size = 12*7, step_size = 7, type = "sliding")
-    df_slide <- slide_window(price_data_H)
-    plot_windows(df_slide)
+# 4. Create and fit stacker
+stacker <- create_stacker(list(list(expert1)), weight_func = list(ordinal(1)))
+stack_results <- evaluate_stack(stacker, SpotPrice ~ 1, windower, 
+                               your_data, expert_densities)
+```
 
-![](man/figures/README/unnamed-chunk-2-1.png)
+## Time Series Windows
 
-Sliding windows keep the length of data the same as you move through
-time. This is useful when older data becomes less relevant as you move
-through time.
+**gamstackr** supports two main types of windows for time series analysis:
 
-    expand_window <- create_windower(12*7, horizon_size = 7, window_size = 12*7, step_size = 7, type = "expanding")
-    df_expand <- expand_window(price_data_H)
-    plot_windows(df_expand)
+### Sliding Windows
+Fixed-size windows that move through time. Useful when older data becomes less relevant.
 
-![](man/figures/README/unnamed-chunk-3-1.png)
+```r
+# Create sliding window
+slide_window <- create_windower(
+  horizon_size = 7, 
+  window_size = 12*7, 
+  step_size = 7, 
+  type = "sliding"
+)
 
-Expanding windows keep adding more data to your training set, this is
-useful when you don’t expect the trend to change.
+df_slide <- slide_window(price_data_H)
+plot_windows(df_slide)
+```
 
-# Creating experts
+![Sliding window visualization](man/figures/README/unnamed-chunk-2-1.png)
 
-The next step is to define the experts that you want to use in your
-stacking, we include a flexible framework that allows for almost any
-model to be compatable at the cost of some extra work when defining
-models.
+### Expanding Windows  
+Growing windows that accumulate historical data. Useful when trends are expected to remain stable.
 
-An expert object is created through the function `create_expert` which
-requires the user to provide two functions, a fitting function
-`fit_func` and a density function `dens_func`.
+```r
+# Create expanding window
+expand_window <- create_windower(
+  horizon_size = 7, 
+  window_size = 12*7, 
+  step_size = 7, 
+  type = "expanding"
+)
 
-The `fit_func` should take as input a data frame containing both the
-response and the features.
+df_expand <- expand_window(price_data_H)
+plot_windows(df_expand)
+```
 
-The `dens_func` should take as input a fitted model, and the data for
-which you want the densities, it should return a vector of the density
-at each row of the data given.
+![Expanding window visualization](man/figures/README/unnamed-chunk-3-1.png)
 
-You can optionally specify a custom `pred_func` if your predictions
-aren’t directly obtained by calling `predict(fitted_model)`.
+## Creating Experts
 
-Once you have defined these two functions you can create your expert.
+Define custom forecasting experts by specifying fitting and density functions:
 
+### Expert Components
+- `fit_func`: Function to train the model on data
+- `dens_func`: Function to evaluate probability densities  
+- `pred_func`: (Optional) Custom prediction function
+
+### Example Expert Definition
+
+```r
+# Define fitting function
     fit_func <- function(data) {
-      data <- tail(data, 7*4) # trim to last 4 weeks of data
-      gam(SpotPrice ~  s(LagMatrix, by = LoadMatrix) + Lag_J1_GazPrice + Nuclear_availability + M1_Oil + M1_Coal, data = data)
+  data <- tail(data, 7*4) # Use last 4 weeks of data
+  gam(SpotPrice ~ s(LagMatrix, by = LoadMatrix) + Lag_J1_GazPrice + 
+      Nuclear_availability + M1_Oil + M1_Coal, data = data)
     }
 
-
+# Define density function
     dens_func <- function(fitted_model, data) {
       mu <- predict(fitted_model, data)
       sd <- sqrt(fitted_model$sig2)
       dnorm(data[,"SpotPrice"], mu, sd, log = TRUE)
     }
 
-
+# Create expert
     expert1 <- create_expert(fit_func, dens_func = dens_func)
+```
 
-An `expert` is an object with the following methods:
+### Expert Methods
+Each expert object provides the following methods:
+- `fit`: Train the model
+- `predict`: Generate forecasts  
+- `simulate`: Generate simulated forecasts
+- `density`: Evaluate probability densities
 
--   `fit`
--   `predict`
--   `simulate`
--   `density`
+### Evaluating Experts Across Windows
 
-For example to fit it to the first window of data we can call,
+```r
+# Evaluate expert across all windows
+exp1_out <- evaluate_expert(expert1, slide_window, price_data_H, 
+                           type = c("model", "predict", "density"))
 
-    expert1 <- expert1$fit(expert1, df_slide[attr(df_slide, "training_windows")[[1]],])
+# Access results
+exp1_out$preds[1:3]  # Predictions for first 3 windows
+exp1_out$dens[1:3]   # Densities for first 3 windows
+exp1_out$model       # Final fitted model
+```
 
-The package is better set up for fitting and predicting an expert across
-an entire window at once, we can do this with `evaluate_expert`. This
-takes an expert object, window object and a data frame and then
-sequentially fits to each window. By default this will only return the
-test predictions from each window, however we can also ask it to return
-each fitted model object and/or the evaluated density.
+### Multiple Experts
 
-    exp1_out <- evaluate_expert(expert1, slide_window, price_data_H, type = c("model", "predict", "density"))
+Create experts with different window sizes for comparison:
 
-Then we can retrieve relevant information from our list of outputs. Predictions
-
-    exp1_out$preds[1:3] # predictions for first 3 test windows
-
-    ## [[1]]
-    ##       85       86       87       88       89       90       91 
-    ## 27.29038 35.93240 34.26679 38.55249 25.73162 21.59209 20.81119 
-    ## 
-    ## [[2]]
-    ##       92       93       94       95       96       97       98 
-    ## 32.58839 31.75952 30.03517 32.10625 28.71492 20.24273 14.80221 
-    ## 
-    ## [[3]]
-    ##       99      100      101      102      103      104      105 
-    ## 41.25832 34.98615 26.87001 31.35441 31.53950 17.39344 10.69683
-
-Densities
-
-    exp1_out$dens[1:3] # evaluated density on first 3 test windows
-
-    ## [[1]]
-    ## [1] -3.141503 -2.747355 -2.808424 -3.477677 -2.977127 -2.770492 -4.455639
-    ## 
-    ## [[2]]
-    ## [1] -3.540320 -5.147748 -4.848701 -6.889294 -4.230990 -3.613639 -2.808886
-    ## 
-    ## [[3]]
-    ## [1] -3.065358 -2.810018 -3.720443 -2.957988 -2.877830 -2.965067 -3.657297
-
-Fitted model
-
-    exp1_out$model # final fitted model
-
-    ## 
-    ## Family: gaussian 
-    ## Link function: identity 
-    ## 
-    ## Formula:
-    ## SpotPrice ~ s(LagMatrix, by = LoadMatrix) + Lag_J1_GazPrice + 
-    ##     Nuclear_availability + M1_Oil + M1_Coal
-    ## 
-    ## Estimated degrees of freedom:
-    ## 3.28  total = 7.28 
-    ## 
-    ## GCV score: 17.84823     rank: 14/15
-
-Now we need to create a stack, before we can create a stack we will need
-some more experts, we will create an expert with the same structure but
-increase the window size. When adding multiple experts, it is
-recommended that they all take the same data frame as input, and to
-transform inside `fit_func` if required.
-
+```r
+# Expert with 8-week window
     fit_func2 <- function(data) {
-      data <- tail(data, 8*4) # trim to last 8 weeks of data
-      gam(SpotPrice ~  s(LagMatrix, by = LoadMatrix) + Lag_J1_GazPrice + Nuclear_availability + M1_Oil + M1_Coal, data = data)
+  data <- tail(data, 8*4) # Last 8 weeks
+  gam(SpotPrice ~ s(LagMatrix, by = LoadMatrix) + Lag_J1_GazPrice + 
+      Nuclear_availability + M1_Oil + M1_Coal, data = data)
     }
 
+# Expert with 12-week window  
     fit_func3 <- function(data) {
-      data <- tail(data, 12*4) # trim to last 12 weeks of data
-      gam(SpotPrice ~  s(LagMatrix, by = LoadMatrix) + Lag_J1_GazPrice + Nuclear_availability + M1_Oil + M1_Coal, data = data)
+  data <- tail(data, 12*4) # Last 12 weeks
+  gam(SpotPrice ~ s(LagMatrix, by = LoadMatrix) + Lag_J1_GazPrice + 
+      Nuclear_availability + M1_Oil + M1_Coal, data = data)
     }
 
     expert2 <- create_expert(fit_func2, dens_func = dens_func)
     expert3 <- create_expert(fit_func3, dens_func = dens_func)
 
-We can fit multiple experts at once with `evaluate_expert`, simply enter
-them as a list.
+# Evaluate multiple experts simultaneously
+experts_out <- evaluate_expert(list(expert1, expert2, expert3), 
+                              slide_window, price_data_H, 
+                              type = c("predict", "density"))
 
-    experts_out <- evaluate_expert(list(expert1, expert2, expert3), slide_window, price_data_H, type = c("predict", "density"))
-
-`experts_out` is a list of lists, where the top level contains each of
-the evaluated experts and the inner level contains the
-predictions/density etc. We can turn these into data frames using the
-`bind_output` function, this is the format we need to input to the
-stacking.
-
+# Convert to matrix format for stacking
     preds <- bind_output(experts_out, "preds")
     dens <- bind_output(experts_out, "dens")
+```
 
-    head(preds)
+## Stacking
 
-    ##        [,1]     [,2]     [,3]
-    ## 85 27.29038 27.71385 28.86378
-    ## 86 35.93240 34.32104 35.65636
-    ## 87 34.26679 32.31312 32.36643
-    ## 88 38.55249 36.69834 37.91584
-    ## 89 25.73162 26.23389 30.17281
-    ## 90 21.59209 20.73251 26.67370
+Create stacking objects to combine expert forecasts using sophisticated weighting schemes.
 
-    head(dens)
+### Available Weight Functions
+- `ordinal(n)`: Assumes ordered expert performance (n = number of experts)
+- `MVN_weights(x)`: Uses coordinate-based expert positioning  
+- `id()`: Fixed weights (useful for standalone experts)
 
-    ##           [,1]      [,2]      [,3]
-    ## [1,] -3.141503 -3.213065 -3.382221
-    ## [2,] -2.747355 -2.805436 -2.849941
-    ## [3,] -2.808424 -2.800873 -2.847972
-    ## [4,] -3.477677 -3.816736 -3.547068
-    ## [5,] -2.977127 -2.964273 -2.846361
-    ## [6,] -2.770492 -2.805496 -3.317935
+### Basic Stacking Example
 
-# Stacking
+```r
+# Create stacker for ordered experts
+stacker <- create_stacker(
+  experts = list(list(expert1, expert2, expert3)), 
+  weight_func = list(ordinal(3))
+)
 
-Similiarly to the expert we need to create a stacking object.
-
-This takes a list of lists experts (designed for nested stacking) and a
-list of *inner\_functions* these are the functions used to obtain a set
-of inner weights, currently we have 3 methods available: - `ordinal(n)`:
-Assumes an ordered set of experts, `n` is number of experts included -
-`MVN_weights(x)`: Requires experts to be placed in some coordinate
-space, `x` is given coordinates - `id()` which is used when you want to
-include models in the stack with fixed weights.
-
-    stacker <- create_stacker(list(list(expert1, expert2, expert3)), inners = list(ordinal(3)))
-
-The stacker object can be used to fit experts to new data or to fit a
-weighted stack. We can fit it to the experts we defined earlier. We want
-to fit to out of sample density to avoid overfitting.
-
+# Prepare data for stacking
     stack_dat <- price_data_H[rownames(preds),]
 
-We need to give the stacker a formula, a list of out of sample densities
-and a window object.
-
-    stack <- evaluate_stack(stacker,
+# Evaluate stack across windows
+stack <- evaluate_stack(
+  stacker,
                    formula = list(SpotPrice ~ VMA),
                    windower = expand_window, 
                    stack_data = stack_dat, 
-                   list_of_densities = list(dens))
+  list_of_densities = list(dens)
+)
 
-Our fitted stack contains all the evaluated weights.
-
+# Extract weights and visualize
     stack_weights <- do.call("rbind", stack)
     stack_idx <- rownames(stack_weights)
-    plot(price_data_H[stack_idx, "VMA"], stack_weights[,1])
+```
 
-![](man/figures/README/unnamed-chunk-15-1.png)
+![Stacking weights over time](man/figures/README/unnamed-chunk-15-1.png)
 
-    metrics( price_data_H[stack_idx, "SpotPrice"], rowSums(stack_weights * preds[stack_idx,]))
+### Performance Comparison
 
-    ## [1] "RMSE: 8.28239727693582"
-    ## [1] "MAE: 6.27734475072377"
+```r
+# Compare stacked vs individual expert performance
+stack_forecast <- rowSums(stack_weights * preds[stack_idx,])
+individual_forecast <- preds[stack_idx, 3]
 
-    metrics( price_data_H[stack_idx, "SpotPrice"], preds[stack_idx,3])
+metrics(actual_prices, stack_forecast)
+#> [1] "RMSE: 8.28"
+#> [1] "MAE: 6.28"
 
-    ## [1] "RMSE: 8.47467798427476"
-    ## [1] "MAE: 6.34155051940999"
+metrics(actual_prices, individual_forecast)  
+#> [1] "RMSE: 8.47"
+#> [1] "MAE: 6.34"
+```
 
-Only a small improvement but this was a very simplified example. We can
-include other models alongside this ordered stack.
+### Advanced Expert: XGBoost Integration
 
+For more complex models like XGBoost, custom prediction functions are required:
+
+```r
+# XGBoost fitting function with data preprocessing
     fit_func4 <- function(data) {
+  # Remove non-feature columns
       data <- data %>% select(-c("Time", "hour_pred", "split_type", "Date", "clock", "Trend"))
       X <- data %>% select(-c("SpotPrice"))
       y <- data %>% select("SpotPrice")
+  
+  # Internal train/validation split
       N <- nrow(X)
       train_idx <- 1:floor(0.9*N)
       test_idx <- -train_idx
+  
       dTrain <- xgb.DMatrix(data = as.matrix(X[train_idx,]), label = as.matrix(y[train_idx,]))
       dTest <- xgb.DMatrix(data = as.matrix(X[test_idx,]), label = as.matrix(y[test_idx,]))
-      watchlist = list(train = dTrain, test = dTest)
-      mod <- xgb.train(data = dTrain, verbose = FALSE, eta = 0.05, max_depth = 5, objective = "reg:squarederror", nrounds = 200, watchlist = watchlist, early_stopping_rounds = 10,
-      )
+  
+  # Train XGBoost model with early stopping
+  mod <- xgb.train(data = dTrain, verbose = FALSE, eta = 0.05, max_depth = 5, 
+                   objective = "reg:squarederror", nrounds = 200, 
+                   early_stopping_rounds = 10)
+  
+  # Store additional information needed for density evaluation
       mod$fitted_data <- dTrain
-      mod$sig2 <- sd(predict(mod, dTest) - y[test_idx,])**2
+  mod$sig2 <- sd(predict(mod, dTest) - y[test_idx,])^2
       return(mod)
     }
 
-    dens_func4 <- function(fitted_model, data) {
-      mu <- pred_func4(fitted_model, data)
-      sd <- sqrt(fitted_model$sig2)
-      dnorm(data[,"SpotPrice"], mu, sd, log = TRUE)
-    }
-
+# Custom prediction function for XGBoost
     pred_func4 <- function(fitted_model, data) {
       data <- data %>% select(-c("Time", "hour_pred", "split_type", "Date", "clock", "Trend"))
       X <- data %>% select(-c("SpotPrice"))
@@ -305,76 +288,116 @@ include other models alongside this ordered stack.
       predict(fitted_model, dTest)
     }
 
-As we are using xgboost we need a custom predict function.
+# Density function using custom prediction
+dens_func4 <- function(fitted_model, data) {
+  mu <- pred_func4(fitted_model, data)
+  sd <- sqrt(fitted_model$sig2)
+  dnorm(data[,"SpotPrice"], mu, sd, log = TRUE)
+}
 
+# Create XGBoost expert with custom predict function
     expert4 <- create_expert(fit_func = fit_func4, dens_func = dens_func4, pred_func = pred_func4)
+```
 
-Evaluate all the experts.
+# Evaluate all experts
+out <- evaluate_expert(list(expert1, expert2, expert3, expert4), 
+                       expand_window, price_data_H, 
+                       type = c("density", "predict", "model"))
 
-    out <- evaluate_expert(list(expert1, expert2, expert3, expert4), expand_window, price_data_H, type = c("density", "predict", "model"))
-
-    ##   |                                                          |                                                  |   0%  |                                                          |=                                                 |   2%  |                                                          |==                                                |   5%  |                                                          |====                                              |   8%  |                                                          |=====                                             |  10%  |                                                          |======                                            |  12%  |                                                          |========                                          |  15%  |                                                          |=========                                         |  18%  |                                                          |==========                                        |  20%  |                                                          |===========                                       |  22%  |                                                          |============                                      |  25%  |                                                          |==============                                    |  28%  |                                                          |===============                                   |  30%  |                                                          |================                                  |  32%  |                                                          |==================                                |  35%  |                                                          |===================                               |  38%  |                                                          |====================                              |  40%  |                                                          |=====================                             |  42%  |                                                          |======================                            |  45%  |                                                          |========================                          |  48%  |                                                          |=========================                         |  50%  |                                                          |==========================                        |  52%  |                                                          |============================                      |  55%  |                                                          |=============================                     |  58%  |                                                          |==============================                    |  60%  |                                                          |===============================                   |  62%  |                                                          |================================                  |  65%  |                                                          |==================================                |  68%  |                                                          |===================================               |  70%  |                                                          |====================================              |  72%  |                                                          |======================================            |  75%  |                                                          |=======================================           |  78%  |                                                          |========================================          |  80%  |                                                          |=========================================         |  82%  |                                                          |==========================================        |  85%  |                                                          |============================================      |  88%  |                                                          |=============================================     |  90%  |                                                          |==============================================    |  92%  |                                                          |================================================  |  95%  |                                                          |================================================= |  98%  |                                                          |==================================================| 100%
-    ## ----- Expert 1 completed ----- 
-    ##   |                                                          |                                                  |   0%  |                                                          |=                                                 |   2%  |                                                          |==                                                |   5%  |                                                          |====                                              |   8%  |                                                          |=====                                             |  10%  |                                                          |======                                            |  12%  |                                                          |========                                          |  15%  |                                                          |=========                                         |  18%  |                                                          |==========                                        |  20%  |                                                          |===========                                       |  22%  |                                                          |============                                      |  25%  |                                                          |==============                                    |  28%  |                                                          |===============                                   |  30%  |                                                          |================                                  |  32%  |                                                          |==================                                |  35%  |                                                          |===================                               |  38%  |                                                          |====================                              |  40%  |                                                          |=====================                             |  42%  |                                                          |======================                            |  45%  |                                                          |========================                          |  48%  |                                                          |=========================                         |  50%  |                                                          |==========================                        |  52%  |                                                          |============================                      |  55%  |                                                          |=============================                     |  58%  |                                                          |==============================                    |  60%  |                                                          |===============================                   |  62%  |                                                          |================================                  |  65%  |                                                          |==================================                |  68%  |                                                          |===================================               |  70%  |                                                          |====================================              |  72%  |                                                          |======================================            |  75%  |                                                          |=======================================           |  78%  |                                                          |========================================          |  80%  |                                                          |=========================================         |  82%  |                                                          |==========================================        |  85%  |                                                          |============================================      |  88%  |                                                          |=============================================     |  90%  |                                                          |==============================================    |  92%  |                                                          |================================================  |  95%  |                                                          |================================================= |  98%  |                                                          |==================================================| 100%
-    ## ----- Expert 2 completed ----- 
-    ##   |                                                          |                                                  |   0%  |                                                          |=                                                 |   2%  |                                                          |==                                                |   5%  |                                                          |====                                              |   8%  |                                                          |=====                                             |  10%  |                                                          |======                                            |  12%  |                                                          |========                                          |  15%  |                                                          |=========                                         |  18%  |                                                          |==========                                        |  20%  |                                                          |===========                                       |  22%  |                                                          |============                                      |  25%  |                                                          |==============                                    |  28%  |                                                          |===============                                   |  30%  |                                                          |================                                  |  32%  |                                                          |==================                                |  35%  |                                                          |===================                               |  38%  |                                                          |====================                              |  40%  |                                                          |=====================                             |  42%  |                                                          |======================                            |  45%  |                                                          |========================                          |  48%  |                                                          |=========================                         |  50%  |                                                          |==========================                        |  52%  |                                                          |============================                      |  55%  |                                                          |=============================                     |  58%  |                                                          |==============================                    |  60%  |                                                          |===============================                   |  62%  |                                                          |================================                  |  65%  |                                                          |==================================                |  68%  |                                                          |===================================               |  70%  |                                                          |====================================              |  72%  |                                                          |======================================            |  75%  |                                                          |=======================================           |  78%  |                                                          |========================================          |  80%  |                                                          |=========================================         |  82%  |                                                          |==========================================        |  85%  |                                                          |============================================      |  88%  |                                                          |=============================================     |  90%  |                                                          |==============================================    |  92%  |                                                          |================================================  |  95%  |                                                          |================================================= |  98%  |                                                          |==================================================| 100%
-    ## ----- Expert 3 completed ----- 
-    ##   |                                                          |                                                  |   0%  |                                                          |=                                                 |   2%  |                                                          |==                                                |   5%  |                                                          |====                                              |   8%  |                                                          |=====                                             |  10%  |                                                          |======                                            |  12%  |                                                          |========                                          |  15%  |                                                          |=========                                         |  18%  |                                                          |==========                                        |  20%  |                                                          |===========                                       |  22%  |                                                          |============                                      |  25%  |                                                          |==============                                    |  28%  |                                                          |===============                                   |  30%  |                                                          |================                                  |  32%  |                                                          |==================                                |  35%  |                                                          |===================                               |  38%  |                                                          |====================                              |  40%  |                                                          |=====================                             |  42%  |                                                          |======================                            |  45%  |                                                          |========================                          |  48%  |                                                          |=========================                         |  50%  |                                                          |==========================                        |  52%  |                                                          |============================                      |  55%  |                                                          |=============================                     |  58%  |                                                          |==============================                    |  60%  |                                                          |===============================                   |  62%  |                                                          |================================                  |  65%  |                                                          |==================================                |  68%  |                                                          |===================================               |  70%  |                                                          |====================================              |  72%  |                                                          |======================================            |  75%  |                                                          |=======================================           |  78%  |                                                          |========================================          |  80%  |                                                          |=========================================         |  82%  |                                                          |==========================================        |  85%  |                                                          |============================================      |  88%  |                                                          |=============================================     |  90%  |                                                          |==============================================    |  92%  |                                                          |================================================  |  95%  |                                                          |================================================= |  98%  |                                                          |==================================================| 100%
-    ## ----- Expert 4 completed -----
-
-Split the densities into data frames corresponding to groups of experts,
-in this case experts 1 - 3 belong to the ordered group and expert 4
-stands alone.
-
+```r
+# Organize expert groups (GAM experts 1-3, XGBoost expert 4)
     dens <- bind_output(out, "dens")
     preds <- bind_output(out, "preds")
-
-    list_of_densities <- list(dens[,1:3], dens[,4,drop = FALSE])
+list_of_densities <- list(dens[,1:3], dens[,4, drop = FALSE])
 
     stack_dat <- price_data_H[rownames(preds),]
 
-The list of lists for the experts now makes more sense, you also need a
-list of the inner functions as before. `id` simply assigns a weight of
-1.
+# Create multi-group stacker  
+stacker <- create_stacker(
+  experts = list(list(expert1, expert2, expert3), list(expert4)), 
+  weight_func = list(ordinal(3), id())  # Ordinal for GAM group, fixed for XGBoost
+)
 
-    stacker <- create_stacker(list(list(expert1, expert2, expert3), list(expert4)), inners = list(ordinal(3), id()))
+# Evaluate with multiple formulas
+st_out <- evaluate_stack(stacker, 
+                        formulas = list(SpotPrice ~ 1, ~ VMA), 
+                        windower = expand_window, 
+                        stack_data = stack_dat, 
+                        list_of_densities = list_of_densities)
 
-    st_out <- evaluate_stack(stacker, list(SpotPrice ~ 1, ~ VMA), windower = expand_window, stack_data = stack_dat, list_of_densities = list_of_densities)
+stack_weights <- do.call("rbind", st_out)
+```
 
-    ##   |                                                          |                                                  |   0%  |                                                          |==                                                |   4%  |                                                          |====                                              |   7%  |                                                          |=====                                             |  11%  |                                                          |=======                                           |  14%  |                                                          |=========                                         |  18%  |                                                          |===========                                       |  21%  |                                                          |============                                      |  25%  |                                                          |==============                                    |  29%  |                                                          |================                                  |  32%  |                                                          |==================                                |  36%  |                                                          |====================                              |  39%  |                                                          |=====================                             |  43%  |                                                          |=======================                           |  46%  |                                                          |=========================                         |  50%  |                                                          |===========================                       |  54%  |                                                          |=============================                     |  57%  |                                                          |==============================                    |  61%  |                                                          |================================                  |  64%  |                                                          |==================================                |  68%  |                                                          |====================================              |  71%  |                                                          |======================================            |  75%  |                                                          |=======================================           |  79%  |                                                          |=========================================         |  82%  |                                                          |===========================================       |  86%  |                                                          |=============================================     |  89%  |                                                          |==============================================    |  93%  |                                                          |================================================  |  96%  |                                                          |==================================================| 100%
+### Performance Results
 
-    stack_weights <- do.call("rbind", st_out)
+```r
+# Performance comparison
+stack_forecast <- rowSums(stack_weights * preds[stack_idx,])
+xgboost_forecast <- preds[stack_idx, 4]
 
-    head(stack_weights)
+metrics(actual_prices, stack_forecast)
+#> [1] "RMSE: 7.79"
+#> [1] "MAE: 5.84"
 
-    ##           [,1]         [,2]      [,3]      [,4]
-    ## 169 0.03385924 1.678391e-07 0.8062688 0.1598718
-    ## 170 0.03343485 1.658226e-07 0.8066932 0.1598718
-    ## 171 0.03648869 1.802833e-07 0.8036393 0.1598718
-    ## 172 0.03553032 1.757575e-07 0.8045977 0.1598718
-    ## 173 0.03507731 1.736143e-07 0.8050507 0.1598718
-    ## 174 0.03737048 1.844374e-07 0.8027575 0.1598718
+metrics(actual_prices, xgboost_forecast)
+#> [1] "RMSE: 10.58" 
+#> [1] "MAE: 7.89"
 
-    metrics( price_data_H[stack_idx, "SpotPrice"], rowSums(stack_weights * preds[stack_idx,]))
+# Visualize forecasts
+plot(price_data_H[stack_idx, "Date"], price_data_H[stack_idx, "SpotPrice"], 
+     type = "l", main = "Stacked vs Individual Forecasts")
+lines(price_data_H[stack_idx, "Date"], stack_forecast, col = "red")
+```
 
-    ## [1] "RMSE: 7.78850369238737"
-    ## [1] "MAE: 5.83607844905244"
+![Forecast comparison](man/figures/README/unnamed-chunk-23-1.png)
 
-    metrics( price_data_H[stack_idx, "SpotPrice"], preds[stack_idx,4])
+```r
+# Expert weights over time
+library(ggplot2)
+library(reshape2)
 
-    ## [1] "RMSE: 10.5808976672181"
-    ## [1] "MAE: 7.88642634138769"
+W_dat <- data.frame(Date = price_data_H[rownames(stack_weights), "Date"])
+W_dat <- cbind(W_dat, stack_weights)
+W_dat <- melt(W_dat, id.vars = "Date")
 
-    with(price_data_H[stack_idx, ], plot(Date, SpotPrice, type = "l"))
-    lines(price_data_H[stack_idx, "Date"], rowSums(stack_weights * preds[stack_idx,]), col = "red")
+ggplot(W_dat, aes(x = Date, y = value, fill = variable)) +
+  geom_area() + 
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Expert Weights Over Time", y = "Weight", fill = "Expert")
+```
 
-![](man/figures/README/unnamed-chunk-23-1.png)
+![Expert weights over time](man/figures/README/unnamed-chunk-24-1.png)
 
-    W <- do.call("rbind", st_out)
-    W_dat <- data.frame(Date = price_data_H[rownames(W), "Date"])
-    W_dat <- cbind(W_dat, W)
-    W_dat <- reshape::melt(W_dat, id.vars = c("Date"))
-    ggplot(data=W_dat, aes(x=Date, y = value, fill=variable, group = variable)) +
-      geom_area() + scale_fill_brewer(palette="Set2")
+## Package Development
 
-![](man/figures/README/unnamed-chunk-24-1.png)
+For development, load the package using [[memory:5668513]]:
+
+```r
+devtools::load_all()  # Recommended for development
+```
+
+## Performance and Optimization
+
+- **C++ Backend**: Core computations via Rcpp and RcppArmadillo
+- **Memory Efficient**: Optimized for large-scale time series applications  
+- **Parallel Ready**: Compatible with parallel processing frameworks
+
+## Contributing
+
+Contributions welcome! Please submit Pull Requests for major changes after opening an issue to discuss.
+
+## License
+
+GPL (>= 3) - see [LICENSE.md](LICENSE.md) for details.
+
+## Citation
+
+```
+Enticott, E. (2024). gamstackr: Tools for stacking probabilistic densities. 
+R package version 1.0. https://github.com/eenticott/gamstackr
+```
+
+## References
+
+- Price data: [ENTSO-E Transparency Platform](https://www.entsoe.eu/)
+- Exogenous data: [Eco2mix Regional](https://odre.opendatasoft.com/explore/dataset/eco2mix-regional-tr)

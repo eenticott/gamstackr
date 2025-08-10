@@ -4,52 +4,196 @@ output: github_document
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-```{r, include = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.path = "man/figures/README-",
-  out.width = "100%"
+  fig.path = "man/figures/README/",
+  out.width = "100%",
+  dpi = 300,
+  message = FALSE,
+  warning = FALSE
 )
 ```
 
 # gamstackr
 
 <!-- badges: start -->
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![R-CMD-check](https://github.com/eenticott/gamstackr/workflows/R-CMD-check/badge.svg)](https://github.com/eenticott/gamstackr/actions)
 <!-- badges: end -->
 
-The goal of gamstackr is to ...
+**gamstackr** is an R package for probabilistic density stacking and expert combination in time series forecasting. It provides a flexible framework for combining multiple forecasting models (experts) through sophisticated weighting schemes, particularly useful for electricity price forecasting and other time series applications.
+
+## Key Features
+
+- **Flexible Expert Definition**: Create custom forecasting experts with any underlying model
+- **Multiple Stacking Methods**: Support for ordinal, multivariate normal, and identity weight functions
+- **Time Series Windows**: Built-in tools for sliding and expanding window analysis
+- **Density Combination**: Combine probabilistic forecasts rather than just point forecasts
+- **GAM Integration**: Seamless integration with Generalized Additive Models via mgcv
+- **Performance Optimized**: C++ backend via Rcpp for computational efficiency
 
 ## Installation
 
-You can install the development version of gamstackr from [GitHub](https://github.com/) with:
+You can install the development version of gamstackr from [GitHub](https://github.com/eenticott/gamstackr) with:
 
-``` r
+```r
 # install.packages("devtools")
 devtools::install_github("eenticott/gamstackr")
 ```
 
-## Example
+## Quick Start
 
-This is a basic example which shows you how to solve a common problem:
+Here's a simple example demonstrating the core workflow:
 
-```{r example}
+```{r quickstart, eval=FALSE}
 library(gamstackr)
-## basic example code
+
+# 1. Define experts with custom fitting and density functions
+fit_func <- function(data) {
+  mgcv::gam(SpotPrice ~ s(LagMatrix, by = LoadMatrix) + Nuclear_availability, 
+            data = data)
+}
+
+dens_func <- function(fitted_model, data) {
+  mu <- predict(fitted_model, data)
+  sd <- sqrt(fitted_model$sig2)
+  dnorm(data[,"SpotPrice"], mu, sd, log = TRUE)
+}
+
+expert1 <- create_expert(fit_func, dens_func = dens_func)
+
+# 2. Create windowing strategy
+windower <- create_windower(
+  horizon_size = 7, 
+  window_size = 12*7, 
+  step_size = 7, 
+  type = "sliding"
+)
+
+# 3. Evaluate experts across windows
+expert_results <- evaluate_expert(expert1, windower, your_data, 
+                                  type = c("predict", "density"))
+
+# 4. Create and fit stacker
+stacker <- create_stacker(list(list(expert1)), weight_func = list(ordinal(1)))
+stack_results <- evaluate_stack(stacker, SpotPrice ~ 1, windower, 
+                               your_data, expert_densities)
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+## Core Workflow
 
-```{r cars}
-summary(cars)
+The **gamstackr** workflow consists of four main steps:
+
+### 1. Define Experts
+Create forecasting experts by specifying:
+- `fit_func`: How to train the model on data
+- `dens_func`: How to evaluate probability densities
+- `pred_func`: (Optional) Custom prediction function
+
+### 2. Create Windows
+Set up time series analysis windows:
+- **Sliding windows**: Fixed-size windows that move through time
+- **Expanding windows**: Growing windows that accumulate historical data
+
+### 3. Evaluate Experts
+Systematically fit and evaluate experts across all windows to generate:
+- Out-of-sample predictions
+- Probability density evaluations
+- Model performance metrics
+
+### 4. Stack Results
+Combine expert forecasts using sophisticated weighting schemes:
+- **Ordinal**: Assumes ordered expert performance
+- **MVN weights**: Uses coordinate-based expert positioning
+- **Identity**: Fixed equal or custom weights
+
+## Example Application: Electricity Price Forecasting
+
+The package includes a comprehensive example using day-ahead electricity spot price forecasting with hourly data from 2018-2022. The example demonstrates:
+
+- Multi-expert GAM and XGBoost models
+- Sliding vs expanding window comparisons
+- Advanced stacking with multiple expert groups
+- Performance evaluation and visualization
+
+## Time Series Windows
+
+```{r windows, eval=FALSE}
+# Create sliding window (fixed size)
+slide_window <- create_windower(
+  horizon_size = 7,
+  window_size = 12*7, 
+  step_size = 7, 
+  type = "sliding"
+)
+
+# Create expanding window (growing size)  
+expand_window <- create_windower(
+  horizon_size = 7,
+  window_size = 12*7,
+  step_size = 7, 
+  type = "expanding"
+)
+
+# Apply to data
+windowed_data <- slide_window(your_data)
+plot_windows(windowed_data)
 ```
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this. You could also use GitHub Actions to re-render `README.Rmd` every time you push. An example workflow can be found here: <https://github.com/r-lib/actions/tree/v1/examples>.
+## Advanced Stacking
 
-You can also embed plots, for example:
+Combine multiple expert groups with different weighting schemes:
 
-```{r pressure, echo = FALSE}
-plot(pressure)
+```{r advanced, eval=FALSE}
+# Multiple expert groups
+stacker <- create_stacker(
+  experts = list(
+    list(gam_expert1, gam_expert2, gam_expert3),  # Ordered group
+    list(xgboost_expert)                           # Standalone expert
+  ),
+  weight_func = list(
+    ordinal(3),  # For GAM group
+    id()         # Fixed weight for XGBoost
+  )
+)
+
+# Evaluate with multiple formulas
+results <- evaluate_stack(
+  stacker,
+  formulas = list(SpotPrice ~ s(VMA), ~ 1),
+  windower = expand_window,
+  stack_data = data,
+  list_of_densities = expert_densities
+)
 ```
 
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+## Performance and Optimization
+
+- **C++ Backend**: Core computations implemented in C++ via Rcpp and RcppArmadillo
+- **Memory Efficient**: Optimized for large-scale time series applications  
+- **Parallel Ready**: Designed to work with parallel processing frameworks
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+
+This project is licensed under the GPL (>= 3) License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## Citation
+
+If you use gamstackr in your research, please cite:
+
+```
+Enticott, E. (2024). gamstackr: Tools for stacking probabilistic densities. 
+R package version 1.0. https://github.com/eenticott/gamstackr
+```
+
+## References
+
+- Data sources:
+  - Price data: [ENTSO-E Transparency Platform](https://www.entsoe.eu/)
+  - Exogenous data: [Eco2mix Regional](https://odre.opendatasoft.com/explore/dataset/eco2mix-regional-tr)

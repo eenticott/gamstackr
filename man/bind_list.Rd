@@ -2,13 +2,17 @@
 % Please edit documentation in R/utils.R
 \name{bind_list}
 \alias{bind_list}
-\title{Title}
+\title{Bind a list of lists into a single matrix}
 \usage{
 bind_list(list_of_lists)
 }
 \arguments{
-\item{list_of_lists}{}
+\item{list_of_lists}{A list of lists to be bound}
+}
+\value{
+A combined matrix
 }
 \description{
-Title
+This function binds a list of lists into a single matrix by row-binding
+the column-bound elements of each inner list.
 }

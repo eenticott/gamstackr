@@ -2,24 +2,52 @@
 % Please edit documentation in R/experts.R
 \name{evaluate_stack}
 \alias{evaluate_stack}
-\title{Evaluate a set of experts with weighting functions.}
+\title{Fit and evaluate a stack over rolling/expanding windows}
 \usage{
-evaluate_stack(stacker, formula, windower, stack_data, preds, RidgePen = 1e-05)
+evaluate_stack(
+  stacker,
+  formula,
+  windower,
+  stack_data,
+  expert_outputs,
+  RidgePen = 1e-05
+)
 }
 \arguments{
-\item{stacker}{Stacker object created by \code{create_stacker}.}
+\item{stacker}{A stacker object created by \code{\link[=create_stacker]{create_stacker()}}.}
 
-\item{formula}{Model formula for the weights. For nested stucture this should be a list of lists.}
+\item{formula}{Model formula for the weights (passed to \code{\link[mgcv:gam]{mgcv::gam()}}).
+Include any covariates in \code{stack_data} you wish to use to modulate weights.}
 
-\item{windower}{A windower object created by \code{create_windower}.}
+\item{windower}{A windower function created by \code{\link[=create_windower]{create_windower()}}.}
 
-\item{stack_data}{Data that should be used for stacking, should contain all columns specified by formula.}
+\item{stack_data}{Data frame used for stacking; must contain all columns
+referenced in \code{formula}.}
 
-\item{list_of_densities}{For nested stack this is a list of lists. Densities can be retrieved from experts. Rows should match that of \code{stack_data}.}
+\item{expert_outputs}{Numeric N x K matrix of expert outputs aligned to
+\code{stack_data} rows (K = number of experts). For \code{type = "dens"}, supply
+predictive (log-)densities; for \code{type = "loss"}, supply point
+predictions. If \code{NULL}, outputs are computed from \code{stacker$experts} using
+the stacker's \code{type}.}
+
+\item{RidgePen}{Non-negative scalar ridge penalty applied within the stacking
+families. Default is \code{1e-5}.}
 }
 \value{
-list of predicted weights from stacking process.
+A list of length equal to the number of windows. Each element is an
+\verb{n_test x K} matrix of predicted weights for the test portion of that
+window.
 }
 \description{
-Evaluate a set of experts with weighting functions.
+Fits the stacking model on each training window and returns predicted
+weights on the corresponding test window.
+}
+\examples{
+\dontrun{
+windower <- create_windower(initial_size = 100, horizon_size = 20, step_size = 20)
+W_list <- evaluate_stack(stacker, y ~ x, windower, stack_data = df, expert_outputs = preds)
+}
+}
+\seealso{
+\code{\link[=create_stacker]{create_stacker()}}, \code{\link[=create_windower]{create_windower()}}, \code{\link[=DensStack]{DensStack()}}, \code{\link[=LossStack]{LossStack()}}.
 }

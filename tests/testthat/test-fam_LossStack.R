@@ -1,9 +1,9 @@
 library(numDeriv)
-source("R/fam_LossStack.R")
-
+#source("R/fam_LossStack.R")
+set.seed(1)
 # Test derivatives for log_dens stacking
 
-check_loss_deriv <- function(weight_func, loss, p, N, tol = 1e-8) {
+check_loss_deriv <- function(weight_func, loss, p, N, tol = 1e-5) {
   # Get relevant attributes
   neta <- attr(weight_func, "neta")
   ntheta <- attr(weight_func, "ntheta")

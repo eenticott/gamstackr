@@ -1,3 +1,15 @@
+#' Calculate Gaussian log-likelihood and its derivatives
+#'
+#' This function calculates the log-likelihood of a Gaussian distribution and its derivatives
+#' with respect to the mean and precision parameters.
+#'
+#' @param y Vector of observations
+#' @param param List or matrix of parameters: first column is mean, second column is precision (1/sigma)
+#' @param deriv Integer indicating derivative order (0=value, 1=gradient, 2=Hessian, etc.)
+#' @param ... Additional arguments (not used)
+#'
+#' @return A list containing the log-likelihood and its derivatives
+#'
 llk_gaussian <- function(y, param, deriv = 0, ...) {
   # derivatives are sigma2 not tau
   if (is.list(param) ) param <- do.call("cbind", param)
@@ -58,6 +70,18 @@ llk_gaussian <- function(y, param, deriv = 0, ...) {
 }
 
 
+#' Calculate Gaussian log-likelihood and its derivatives (matrix version)
+#'
+#' This function calculates the log-likelihood of a Gaussian distribution and its derivatives
+#' with respect to the mean and precision parameters. It's optimized for matrix inputs.
+#'
+#' @param y Matrix of observations
+#' @param param List or matrix of parameters: first column is mean, second column is precision (1/sigma)
+#' @param deriv Integer indicating derivative order (0=value, 1=gradient, 2=Hessian)
+#' @param ... Additional arguments (not used)
+#'
+#' @return A list containing the log-likelihood and its derivatives
+#'
 llk_gaussian2 <- function(y, param, deriv = 0, ...) {
   # derivatives are sigma2 not tau
   if (is.list(param) ) param <- do.call("cbind", param)

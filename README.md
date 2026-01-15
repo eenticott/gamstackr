@@ -41,6 +41,8 @@ Here's a simple example demonstrating the core workflow:
 ```r
 library(gamstackr)
 
+data(fr_electricity_price)
+
 # 1. Define experts with custom fitting and density functions
 fit_func <- function(data) {
   mgcv::gam(SpotPrice ~ s(LagMatrix, by = LoadMatrix) + Nuclear_availability, 

@@ -32,6 +32,7 @@ max_index_mat <- function(n) { # used in ordinal penalty
 #'
 #' @return List of functions for finding ordinal weights
 #' @export
+#' @importFrom stats qlogis
 #'
 #' @examples
 #' ordinal(3)
@@ -284,6 +285,8 @@ ordinal <- function(K) { # nolint
 #'
 #' @return Object containing derivatives for multivariate normal stacking
 #' @export
+#' @importFrom matrixStats rowMaxs
+#' @importFrom stats var
 #'
 #' @examples
 #' x <- matrix(c(1:6), nrow = 3)
@@ -823,6 +826,7 @@ multinomial <- function(K, normalised = TRUE) {
 #'
 #' @return A weighting object that multiplies set of outer weights by inner weights
 #' @export
+#' @importFrom Matrix bdiag
 #'
 #' @examples
 nested <- function(outer_weight, inner_weight) {

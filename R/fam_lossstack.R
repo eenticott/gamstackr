@@ -14,6 +14,7 @@
 #' @param deriv Integer indicating derivative order (0=value, 1=gradient, 2=Hessian)
 #'
 #' @return List containing log-likelihood (l), gradient (lb), and Hessian (lbb)
+#' @importFrom Rfast rowsums colsums
 #'
 get_loss_derivs <- function(list_of_beta, list_of_X, theta, logv, loss, weight, preds, y, deriv) {
   neta <- attr(weight, "neta")
@@ -159,6 +160,10 @@ get_loss_derivs <- function(list_of_beta, list_of_X, theta, logv, loss, weight, 
 #'
 #' @return An mgcv family object for loss-based stacking
 #' @export
+#' @importFrom Rfast rowsums colsums
+#' @importFrom stats make.link
+#' @importFrom mgcv fix.family.link gam
+#' @importFrom Matrix bdiag
 #'
 LossStack <- function(preds, loss, weights, RidgePen = 1e-5) {
   # mgcv point forecast stacking family

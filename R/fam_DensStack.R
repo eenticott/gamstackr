@@ -155,6 +155,7 @@ rs_AB <- function(exp_log_a_max, exp_log_a_diff, b) {
 #' @param deriv Integer indicating derivative order (0=value, 1=gradient, 2=Hessian)
 #'
 #' @return List containing log-likelihood (l), gradient (lb), and Hessian (lbb)
+#' @importFrom Rfast rowsums
 #'
 get_ll_dens_derivs <- function(list_of_beta,
                                list_of_X,
@@ -276,6 +277,10 @@ get_ll_dens_derivs <- function(list_of_beta,
 #'
 #' @return An mgcv family object for density stacking
 #' @export
+#' @importFrom Rfast rowMaxs rowsums
+#' @importFrom stats make.link
+#' @importFrom mgcv fix.family.link trind.generator
+#' @importFrom Matrix bdiag
 #'
 DensStack <- function(logP, weight, RidgePen = 1e-5) {
   ### mgcv family for nested stacking

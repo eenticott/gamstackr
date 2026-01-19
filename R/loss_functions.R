@@ -1,4 +1,4 @@
-# 
+#
 #' Squared error loss function and its derivatives
 #'
 #' This function calculates the squared error loss and its derivatives with respect to predictions.
@@ -8,6 +8,7 @@
 #' @param deriv Integer indicating derivative order (0=value, 1=gradient, 2=Hessian)
 #'
 #' @return A list containing the loss, derivatives, and a function C for calculating normalization constants
+#' @export
 #'
 square_loss <- function(y, yhat, deriv = 0) {
   # Calculate loss
@@ -48,6 +49,8 @@ square_loss <- function(y, yhat, deriv = 0) {
 #'
 #' @return Numeric vector containing log(1+exp(x))
 #'
+#' @export
+#'
 log1px <- function (x)
 {
   indx <- .bincode(x, c(-Inf, -37, 18, 33.3, Inf), right = TRUE,
@@ -68,6 +71,15 @@ log1px <- function (x)
 }
 
 
+sigmoid <- function(x, a = 1, b = 0) {
+  if (length(x) == 0) {return(c())}
+
+  stopifnot(is.numeric(x), is.numeric(a), is.numeric(b))
+  a <- a[1]
+  b <- b[1]
+  return(1/(1 + exp(-a * (x - b))))
+}
+
 #' Create a pinball loss function for quantile regression
 #'
 #' This function creates a pinball loss function for a specified quantile level.
@@ -76,6 +88,10 @@ log1px <- function (x)
 #'
 #' @return A function that calculates the pinball loss and its derivatives
 #'
+#' @importFrom Rfast Digamma Trigamma
+#' @importFrom stats beta
+#'
+#' @export
 pinball_loss <- function(tau) {
   assign(".sigma", NULL, env=environment())
   function(y, yhat, deriv = 0) {
@@ -99,7 +115,7 @@ pinball_loss <- function(tau) {
     if (deriv > 0) {
       # Calculate first derivative w.r.t. yhat
       d = (y-yhat)/(lambda*sigma)
-      s = pracma::sigmoid(d)
+      s = sigmoid(d)
       l1 <- -(tau-1)/sigma - s/sigma
       if (deriv > 1) {
         # Calculate second derivative w.r.t. yhat

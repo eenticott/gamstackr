@@ -9,6 +9,12 @@
 
 
 # Functions that can be used for internal model weights and derivatives
+#' Fast row sums
+#'
+#' @param x A numeric matrix
+#'
+#' @return A numeric vector of row sums
+#' @export
 rowsums <- Cpp_rowSums
 
 #' Matrix of max(i,j) where i,j are matrix coords

@@ -285,7 +285,7 @@ ordinal <- function(K) { # nolint
 #'
 #' @return Object containing derivatives for multivariate normal stacking
 #' @export
-#' @importFrom matrixStats rowMaxs
+#' @importFrom Rfast rowMaxs
 #' @importFrom stats var
 #'
 #' @examples
@@ -324,7 +324,7 @@ MVN_weights <- function(ex_coords) {
 
     # log_dens <- matrix(rowsums(dens_matrix), ncol = n_k)
     log_dens <- Reduce("+", dens_list)
-    shift_mat <- log_dens - matrixStats::rowMaxs(log_dens)
+    shift_mat <- log_dens - Rfast::rowMaxs(log_dens)
 
     store <- list()
 

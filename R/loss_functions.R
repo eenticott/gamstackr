@@ -89,7 +89,6 @@ sigmoid <- function(x, a = 1, b = 0) {
 #' @return A function that calculates the pinball loss and its derivatives
 #'
 #' @importFrom Rfast Digamma Trigamma
-#' @importFrom stats beta
 #'
 #' @export
 pinball_loss <- function(tau) {
@@ -130,7 +129,7 @@ pinball_loss <- function(tau) {
       y <- v * lambda * tau
 
       # Calculate I using the Beta function
-      C <- sigma * lambda * beta(x, y)
+      C <- sigma * lambda * base::beta(x, y)
       Cv <- NULL
       Cvv <- NULL
 

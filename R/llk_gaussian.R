@@ -9,7 +9,7 @@
 #' @param ... Additional arguments (not used)
 #'
 #' @return A list containing the log-likelihood and its derivatives
-#'
+#' @export 
 llk_gaussian <- function(y, param, deriv = 0, ...) {
   # derivatives are sigma2 not tau
   if (is.list(param) ) param <- do.call("cbind", param)
@@ -81,7 +81,7 @@ llk_gaussian <- function(y, param, deriv = 0, ...) {
 #' @param ... Additional arguments (not used)
 #'
 #' @return A list containing the log-likelihood and its derivatives
-#'
+ #' @export
 llk_gaussian2 <- function(y, param, deriv = 0, ...) {
   # derivatives are sigma2 not tau
   if (is.list(param) ) param <- do.call("cbind", param)

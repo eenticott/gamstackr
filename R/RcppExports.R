@@ -2,46 +2,46 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 rs_AB_cpp2 <- function(exp_log_a_max, exp_log_a_diff, b) {
-    .Call(`_gamstackr_rs_AB_cpp2`, exp_log_a_max, exp_log_a_diff, b)
+    .Call('_gamstackr_rs_AB_cpp2', PACKAGE = 'gamstackr', exp_log_a_max, exp_log_a_diff, b)
 }
 
 cpp_AoB <- function(A, logB) {
-    .Call(`_gamstackr_cpp_AoB`, A, logB)
+    .Call('_gamstackr_cpp_AoB', PACKAGE = 'gamstackr', A, logB)
 }
 
 stable_rowsum_div_cpp <- function(logA, B, logC) {
-    .Call(`_gamstackr_stable_rowsum_div_cpp`, logA, B, logC)
+    .Call('_gamstackr_stable_rowsum_div_cpp', PACKAGE = 'gamstackr', logA, B, logC)
 }
 
 log_rowSums_a_times_b_cpp <- function(log_a, log_b) {
-    .Call(`_gamstackr_log_rowSums_a_times_b_cpp`, log_a, log_b)
+    .Call('_gamstackr_log_rowSums_a_times_b_cpp', PACKAGE = 'gamstackr', log_a, log_b)
 }
 
 rs_AB_cpp <- function(logA, B) {
-    .Call(`_gamstackr_rs_AB_cpp`, logA, B)
+    .Call('_gamstackr_rs_AB_cpp', PACKAGE = 'gamstackr', logA, B)
 }
 
 ABoC <- function(AB, C) {
-    .Call(`_gamstackr_ABoC`, AB, C)
+    .Call('_gamstackr_ABoC', PACKAGE = 'gamstackr', AB, C)
 }
 
 AoB_cpp <- function(A, logB) {
-    .Call(`_gamstackr_AoB_cpp`, A, logB)
+    .Call('_gamstackr_AoB_cpp', PACKAGE = 'gamstackr', A, logB)
 }
 
 outer_prod <- function(x, y) {
-    .Call(`_gamstackr_outer_prod`, x, y)
+    .Call('_gamstackr_outer_prod', PACKAGE = 'gamstackr', x, y)
 }
 
 get_ll_dens_derivs_cpp <- function(list_of_beta, list_of_X, theta, weight, log_dens, beta_to_eta, deriv = 0L) {
-    .Call(`_gamstackr_get_ll_dens_derivs_cpp`, list_of_beta, list_of_X, theta, weight, log_dens, beta_to_eta, deriv)
+    .Call('_gamstackr_get_ll_dens_derivs_cpp', PACKAGE = 'gamstackr', list_of_beta, list_of_X, theta, weight, log_dens, beta_to_eta, deriv)
 }
 
 Cpp_rowSums <- function(x) {
-    .Call(`_gamstackr_Cpp_rowSums`, x)
+    .Call('_gamstackr_Cpp_rowSums', PACKAGE = 'gamstackr', x)
 }
 
 get_derivs_cpp <- function(eta, theta, deriv, n_k, dim_num, x, dens_matrix, store) {
-    .Call(`_gamstackr_get_derivs_cpp`, eta, theta, deriv, n_k, dim_num, x, dens_matrix, store)
+    .Call('_gamstackr_get_derivs_cpp', PACKAGE = 'gamstackr', eta, theta, deriv, n_k, dim_num, x, dens_matrix, store)
 }
 

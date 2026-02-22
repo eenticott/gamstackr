@@ -318,7 +318,7 @@ MVN_weights <- function(ex_coords) {
     dens_list <- list()
     # find density of each coordinate in each dimension
     for (n in 1:dim_num) {
-      dens_list[[n]] <- llk_gaussian2(matrix(x[,n], ncol = n_k, nrow = nrow(eta)),
+      dens_list[[n]] <- llk_gaussian2(matrix(x[,n], ncol = n_k, nrow = nrow(eta), byrow = TRUE),
                                       param = list(eta[,n], 1/sqrt(tau[n])),
                                       deriv = 0)$d0
       # dens_matrix[, n] <-  llk_gaussian(rep(x[, n], each = nrow(eta)),
@@ -343,7 +343,7 @@ MVN_weights <- function(ex_coords) {
     if (deriv >= 1) {
       dens_list <- list()
       for (n in 1:dim_num) {
-        dens_list[[n]] <- llk_gaussian2(matrix(x[,n], ncol = n_k, nrow = nrow(eta)),
+        dens_list[[n]] <- llk_gaussian2(matrix(x[,n], ncol = n_k, nrow = nrow(eta), byrow = TRUE),
                                         param = list(eta[,n], 1/sqrt(tau[n])),
                                         deriv = deriv)
         # dens_list[[n]] <-  llk_gaussian(rep(x[, n], each = nrow(eta)),
